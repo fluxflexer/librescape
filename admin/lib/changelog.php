@@ -102,6 +102,15 @@ function renderChangeLog(array $rows, bool $showEntry = true): string
     return $html . '</tbody></table>';
 }
 
+/** Readable names of stored fields in the change log. */
+const FIELD_LABELS = [
+    'track_id' => 'lane', 'parent_period_id' => 'part of period', 'gestation_period_id' => 'writing period',
+    'person1_id' => 'person', 'person2_id' => 'second person', 'author_id' => 'author', 'author2_id' => 'second author',
+    'author3_id' => 'third author', 'parent_work_id' => 'part of work', 'category_id' => 'category',
+    'start' => 'from', 'end' => 'to', 'birth' => 'born', 'death' => 'died', 'release' => 'published',
+    'is_active' => 'active', 'source_type' => 'kind', 'published_date' => 'published', 'accessed_date' => 'accessed',
+];
+
 function renderChanges(string $action, ?string $json): string
 {
     $c = $json ? json_decode($json, true) : null;
@@ -117,7 +126,7 @@ function renderChanges(string $action, ?string $json): string
     };
     $out = '<details><summary>' . count($c) . ' field' . (count($c) === 1 ? '' : 's') . '</summary><dl class="changes">';
     foreach ($c as $field => $v) {
-        $out .= '<dt>' . h((string) $field) . '</dt><dd>';
+        $out .= '<dt>' . h(FIELD_LABELS[$field] ?? str_replace('_', ' ', (string) $field)) . '</dt><dd>';
         $out .= $action === 'update' && is_array($v) && array_key_exists(0, $v) && array_key_exists(1, $v) && count($v) === 2
             ? $show($v[0]) . ' <span class="arrow">→</span> ' . $show($v[1])
             : $show($v);

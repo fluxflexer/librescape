@@ -232,23 +232,23 @@ function personDetails(int $id): ?array
     }
     $persons = [];
     $rels = q(
-        'SELECT r.person1_id, r.person2_id, r.relation_status, rt.short_name,
+        'SELECT r.person1_id, r.person2_id, r.relation_status, rt.short_name, rt.inverse_name,
                 a.first_name AS a_first, a.surname AS a_sur, b.first_name AS b_first, b.surname AS b_sur
            FROM relationship r
            JOIN relation_type rt ON rt.id = r.relation_type_id
            JOIN person a ON a.id = r.person1_id
            JOIN person b ON b.id = r.person2_id
-          WHERE r.person1_id = ? OR r.person2_id = ?', [$id, $id]
+          WHERE r.person1_id = ? OR r.person2_id = ?
+          ORDER BY r.id', [$id, $id]
     );
     foreach ($rels as $r) {
         $isFirst = (int) $r['person1_id'] === $id;
         $otherId = $isFirst ? (int) $r['person2_id'] : (int) $r['person1_id'];
         $other = $isFirst ? ['first_name' => $r['b_first'], 'surname' => $r['b_sur']]
                           : ['first_name' => $r['a_first'], 'surname' => $r['a_sur']];
-        // Directional types read from the other person's point of view.
-        $role = $r['short_name'];
-        if ($role === 'parent')   { $role = $isFirst ? 'child' : 'parent'; }
-        if ($role === 'guardian') { $role = $isFirst ? 'ward' : 'guardian'; }
+        // Directional types (with an inverse name) read from the other person's point of view:
+        // if this person is the parent, the other one is shown as "child".
+        $role = $isFirst && $r['inverse_name'] ? $r['inverse_name'] : $r['short_name'];
         $persons[] = ['id' => $otherId, 'name' => personName($other),
                       'role' => $role . ($r['relation_status'] ? ' (' . $r['relation_status'] . ')' : '')];
     }
@@ -261,8 +261,8 @@ function personDetails(int $id): ?array
                       'type' => 'publication', 'id' => (int) $w['id'], 'itemId' => pubItemId($w)];
     }
 
-    $born = $p['date_of_birth'] ? formatDate($p['date_of_birth']) : '?';
-    $died = $p['date_of_death'] ? formatDate($p['date_of_death']) : '';
+    $born = $p['date_of_birth'] ? formatDate($p['date_of_birth'], $p['birth_precision'] ?? 'day') : '?';
+    $died = $p['date_of_death'] ? formatDate($p['date_of_death'], $p['death_precision'] ?? 'day') : '';
     return [
         'type'        => 'person',
         'id'          => (int) $p['id'],

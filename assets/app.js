@@ -387,6 +387,14 @@
         buildLaneToggles();
         buildKeywordPicker();
         showStatus('');
+        openFromHash();
+        window.addEventListener('hashchange', openFromHash);
+    }
+
+    // Deep links like index.php#event-12 (used by the admin app's "Save & view in timeline").
+    function openFromHash() {
+        const m = /^#(event|period|publication|person|source)-(\d+)$/.exec(location.hash);
+        if (m) openDetails(m[1], Number(m[2]), { focus: true });
     }
 
     function onTimelineClick(props) {

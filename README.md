@@ -21,22 +21,41 @@ The full specification is in [Description.md](Description.md); notes on the data
 3. In PowerShell, from the project folder:
 
    ```powershell
-   .\deploy.ps1 -ResetDb   # create tables, load the Tolkien data, fetch images, copy to C:\XAMPP\htdocs\librescape
-   .\deploy.ps1            # later: copy changed files only
+   .\deploy.ps1 -ResetDb                       # create tables, load the Tolkien demo data, fetch images, deploy
+   php tools\create_user.php alice admin "Alice"   # first administrator (asks for a password)
    ```
 
-4. Open http://localhost/librescape/.
+4. Open http://localhost/librescape/ (timeline) and http://localhost/librescape/admin/ (data entry).
 
-`php tools\check_sources.php` lists entries that have no source yet.
+## The database is the master copy
+
+Once people enter data in the admin app, the database holds the real data:
+
+- `.\deploy.ps1` copies changed files and applies pending schema migrations from `sql/migrations/`.
+  Change the schema only by adding a new migration file, never by editing `sql/01_schema.sql` on a live system.
+- `.\deploy.ps1 -ResetDb` **wipes everything** (entries, users, change log) and reloads the demo data.
+  It asks for confirmation and writes a backup first.
+- Backups: in the admin app (Backups, administrators only) or `php tools\backup.php`.
+  They are stored outside the web folder (`backup_dir` in `config.php`).
+
+## Admin app
+
+- **Editors** create, change and delete events, periods, works and people, with keywords, links, sources and relations.
+  Dropdowns search existing entries as you type; “+ Create …” adds a new person, source, period etc. without leaving the form.
+  Dates are typed as you know them: `21 Sep 1937`, `Sep 1937`, `1937`, `1930s`, `c. 1930`.
+- **Administrators** also manage users, backups and maintenance mode (the public timeline is offline, editors are locked out).
+- Every change is recorded in the change log (who, when, old and new values).
+- `php tools\check_sources.php` lists entries that have no source yet (the dashboard shows them too).
 
 ## Layout
 
 | Path | Contents |
 |------|----------|
-| `index.php`, `assets/` | Page, JavaScript, CSS, bundled vis-timeline |
-| `api/` | JSON endpoints: `timeline.php`, `item.php`, `search.php` |
-| `lib/db.php` | Database helpers |
-| `sql/` | Schema and seed data |
-| `tools/` | Image fetcher and source checker |
+| `index.php`, `assets/` | Timeline page, JavaScript, CSS, bundled vis-timeline |
+| `api/` | Viewer JSON endpoints: `timeline.php`, `item.php`, `search.php` |
+| `admin/` | Data-entry app: pages, `admin/api/` (lookup, quick-create, date preview), `admin/lib/` |
+| `lib/` | Shared PHP: database helpers, entry helpers, backups |
+| `sql/` | Baseline schema, demo data, `migrations/` |
+| `tools/` | Migrations, backups, user creation, image fetcher, source checker |
 | `models/` | MySQL Workbench model |
 | `notes/` | Session notes |
