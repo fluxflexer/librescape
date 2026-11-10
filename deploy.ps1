@@ -1,8 +1,10 @@
-# Copies the viewer to the XAMPP web root.
-# Usage: .\deploy.ps1                (files only)
-#        .\deploy.ps1 -ResetDb       (re-create schema, load seed data, fetch Wikipedia images, then deploy)
-#        .\deploy.ps1 -FetchImages   (refresh Wikipedia images for the current data, then deploy)
-param([switch]$ResetDb, [switch]$FetchImages)
+# Copies the viewer and the admin app to the XAMPP web root and applies pending schema migrations.
+# Usage: .\deploy.ps1                  (migrations + files)
+#        .\deploy.ps1 -ResetDb         (WIPES the database incl. users and reloads the Tolkien demo data;
+#                                       writes a backup first and asks for confirmation; -Force skips the question)
+#        .\deploy.ps1 -FetchImages     (refresh Wikipedia images for the current data, then deploy)
+# The database is the master copy of the data - see tools/migrate.php and tools/backup.php.
+param([switch]$ResetDb, [switch]$FetchImages, [switch]$Force)
 
 $src  = $PSScriptRoot
 $dest = 'C:\XAMPP\htdocs\librescape'
@@ -14,17 +16,33 @@ if (-not (Test-Path (Join-Path $src 'config.php'))) {
 }
 
 if ($ResetDb) {
+    if (-not $Force) {
+        Write-Warning "-ResetDb deletes ALL data in the database, including users and the change log."
+        if ((Read-Host "Type RESET to continue") -cne "RESET") { Write-Host "Cancelled"; exit 1 }
+    }
+    & $php (Join-Path $src "tools\backup.php") before-reset
+    if ($LASTEXITCODE -ne 0) { Write-Error "Backup failed - database NOT reset"; exit 1 }
+
     $mysql = 'C:\XAMPP\mysql\bin\mysql.exe'
     # Credentials come from config.php (one value per line: host, name, user, password).
     $cfg = & $php -r '$c = require $argv[1]; echo implode(PHP_EOL, [$c[''db_host''], $c[''db_name''], $c[''db_user''], $c[''db_pass'']]);' (Join-Path $src 'config.php')
     if ($LASTEXITCODE -ne 0 -or $cfg.Count -ne 4) { Write-Error 'Could not read config.php'; exit 1 }
     $env:MYSQL_PWD = $cfg[3]   # keeps the password off the command line
     foreach ($f in '01_schema.sql', '02_seed_tolkien.sql', '03_sources_tolkien.sql') {
-        Get-Content -Raw -Encoding UTF8 (Join-Path $src "sql\$f") |
-            & $mysql -h $cfg[0] -u $cfg[2] --default-character-set=utf8mb4 $cfg[1]
+        # mysql reads the file itself (SOURCE): piping it through PowerShell would re-encode
+        # non-ASCII characters with the session's $OutputEncoding ("née" -> "n?e").
+        $file = (Join-Path $src "sql\$f") -replace '\\', '/'
+        & $mysql -h $cfg[0] -u $cfg[2] --abort-source-on-error --default-character-set=utf8mb4 $cfg[1] --execute="SOURCE $file"
         if ($LASTEXITCODE -ne 0) { Write-Error "Import of $f failed"; exit 1 }
     }
     Write-Host 'Database reset and seeded'
+}
+
+# Schema changes since the baseline (and after a reset: all of them).
+& $php (Join-Path $src 'tools\migrate.php')
+if ($LASTEXITCODE -ne 0) { Write-Error 'Migration failed'; exit 1 }
+if ($ResetDb) {
+    Write-Warning 'All users were deleted. Create an administrator with: php tools\create_user.php'
 }
 
 # Every entry must cite a source; report the ones that don't (does not stop the deploy).

@@ -1,9 +1,16 @@
 -- Librescape schema
 -- Based on data_representation/*.md, extended with track (lanes) and keywords.
--- Re-runnable: drops and recreates all tables.
+-- Re-runnable: drops and recreates all tables. This is the BASELINE schema used by deploy.ps1 -ResetDb;
+-- later changes live in sql/migrations/ and are applied on top by tools/migrate.php.
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
+
+-- Tables added by sql/migrations/ (re-created by tools/migrate.php after a reset)
+DROP TABLE IF EXISTS schema_migration;
+DROP TABLE IF EXISTS app_setting;
+DROP TABLE IF EXISTS change_log;
+DROP TABLE IF EXISTS app_user;
 
 DROP TABLE IF EXISTS weblink;
 DROP TABLE IF EXISTS source_ref;

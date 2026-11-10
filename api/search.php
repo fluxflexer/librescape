@@ -3,7 +3,7 @@
 // Matches names/titles (best), keywords, then descriptions, across persons, events, periods, works and sources.
 
 declare(strict_types=1);
-require __DIR__ . '/../lib/db.php';
+require_once __DIR__ . '/../lib/db.php';
 
 apiRun(function () {
     $term = trim((string) ($_GET['q'] ?? ''));

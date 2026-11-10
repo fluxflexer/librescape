@@ -22,7 +22,7 @@ if (PHP_SAPI !== 'cli') {
     exit;
 }
 
-require __DIR__ . '/../lib/db.php';
+require_once __DIR__ . '/../lib/db.php';
 
 const THUMB_WIDTH = 480;
 const USER_AGENT  = 'LibrescapeTimeline/0.1 (local non-commercial timeline viewer; PHP)';

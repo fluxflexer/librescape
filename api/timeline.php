@@ -5,7 +5,7 @@
 //   `kw` (optional) lists the item's keywords; meta.keywords = [{name, count}] for the keyword dropdown.
 
 declare(strict_types=1);
-require __DIR__ . '/../lib/db.php';
+require_once __DIR__ . '/../lib/db.php';
 
 apiRun(function () {
     $groups = [];
