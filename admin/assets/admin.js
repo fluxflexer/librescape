@@ -126,6 +126,11 @@
             s.error = err.message;
         }
         if (req !== s.req) return; // a newer search is on its way
+        if (isTagEntry(combo)) {
+            // Don't suggest keywords the entry already has.
+            const taken = new Set([...combo.closest('.tags').querySelectorAll('.chip input')].map((i) => i.value));
+            results = results.filter((r) => !taken.has(r.label));
+        }
         const items = results.map((r) => ({ kind: 'pick', ...r }));
         if (q !== '') {
             if (combo.dataset.create) {
@@ -185,7 +190,7 @@
         if (isTagEntry(combo)) {
             addTag(combo.closest('.tags'), item.label);
             parts(combo).input.value = '';
-            close(combo);
+            search(combo); // keep the suggestions open for the next keyword
             return;
         }
         const { hidden, input, clear } = parts(combo);
@@ -285,6 +290,15 @@
             e.stopPropagation(); // don't close a surrounding dialog
             close(combo);
         }
+    });
+
+    // Clicking into a search field that already has the focus opens the suggestions again.
+    document.addEventListener('click', (e) => {
+        const input = e.target.closest('.combo-input');
+        if (!input) return;
+        const combo = input.closest('.combo');
+        const { hidden, list } = parts(combo);
+        if (list.hidden && (!hidden || !hidden.value)) search(combo);
     });
 
     document.addEventListener('mousedown', (e) => {
