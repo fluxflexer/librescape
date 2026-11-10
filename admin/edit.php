@@ -402,7 +402,7 @@ pageHeader($title, $type);
         <div class="card meta tips">
             <h3>Tips</h3>
             <ul>
-                <li>Dates: <em>21 Sep 1937</em>, <em>Sep 1937</em>, <em>1937</em>, <em>1930s</em> or <em>c. 1930</em>; the precision is taken from what you type.</li>
+                <li>Dates: <em>21 Sep 1937</em>, <em>Sep 1937</em>, <em>Summer 1937</em>, <em>Winter 1942/43</em>, <em>1937</em>, <em>1930s</em> or <em>c. 1930</em>; the precision is taken from what you type.</li>
                 <li>In the search fields, pick an existing entry or choose <em>+ Create …</em> to add a new one on the spot.</li>
                 <li><kbd>Ctrl</kbd>+<kbd>S</kbd> saves.</li>
             </ul>

@@ -404,7 +404,7 @@
         try {
             const d = await getJson('api/date.php?q=' + encodeURIComponent(q));
             if (input.value.trim() !== q) return;
-            out.textContent = d.ok ? '→ ' + d.label + ' · ' + d.precisionLabel : 'Not understood – try 21 Sep 1937, Sep 1937, 1937, 1930s or c. 1930';
+            out.textContent = d.ok ? '→ ' + d.label + ' · ' + d.precisionLabel : 'Not understood – try 21 Sep 1937, Sep 1937, Summer 1937, 1937, 1930s or c. 1930';
             out.className = 'date-preview ' + (d.ok ? 'ok' : 'bad');
         } catch (err) {
             out.textContent = '';

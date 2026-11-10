@@ -95,8 +95,24 @@ function formatDate(?string $ts, string $precision = 'day'): string
         case 'year':   return (string) $y;
         case 'decade': return intdiv($y, 10) * 10 . 's';
         case 'circa':  return 'c. ' . $y;
+        case 'season': return seasonLabel($y, $m);
         default:       return $d . ' ' . $months[$m] . ' ' . $y;
     }
+}
+
+/**
+ * "Spring 1937", "Summer 1937", "Autumn 1937"; winter spans two years: "Winter 1942/43".
+ * Meteorological seasons: spring Mar–May, summer Jun–Aug, autumn Sep–Nov, winter Dec–Feb.
+ */
+function seasonLabel(int $y, int $m): string
+{
+    if ($m === 12 || $m <= 2) {
+        $from = $m === 12 ? $y : $y - 1;
+        $to = $from + 1;
+        // 1942/43, but 1999/2000 in full
+        return 'Winter ' . $from . '/' . (intdiv($from, 100) === intdiv($to, 100) ? sprintf('%02d', $to % 100) : $to);
+    }
+    return ($m <= 5 ? 'Spring' : ($m <= 8 ? 'Summer' : 'Autumn')) . ' ' . $y;
 }
 
 function formatRange(?string $startTs, string $startPrec, ?string $endTs, string $endPrec): string

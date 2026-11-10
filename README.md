@@ -42,7 +42,7 @@ Once people enter data in the admin app, the database holds the real data:
 
 - **Editors** create, change and delete events, periods, works and people, with keywords, links, sources and relations.
   Dropdowns search existing entries as you type; “+ Create …” adds a new person, source, period etc. without leaving the form.
-  Dates are typed as you know them: `21 Sep 1937`, `Sep 1937`, `1937`, `1930s`, `c. 1930`.
+  Dates are typed as you know them: `21 Sep 1937`, `Sep 1937`, `Summer 1937`, `Winter 1942/43`, `1937`, `1930s`, `c. 1930`.
 - **Administrators** also manage users, backups and maintenance mode (the public timeline is offline, editors are locked out).
 - Every change is recorded in the change log (who, when, old and new values).
 - `php tools\check_sources.php` lists entries that have no source yet (the dashboard shows them too).

@@ -312,7 +312,8 @@ button { font: inherit; color: inherit; }
     background: var(--lane);
     box-shadow: 0 0 0 3px var(--surface), 0 0 0 4px color-mix(in srgb, var(--lane) 40%, transparent);
 }
-.vis-item.vis-dot.prec-year, .vis-item.vis-dot.prec-decade, .vis-item.vis-dot.prec-circa, .vis-item.vis-dot.prec-month {
+.vis-item.vis-dot.prec-year, .vis-item.vis-dot.prec-decade, .vis-item.vis-dot.prec-circa, .vis-item.vis-dot.prec-month,
+.vis-item.vis-dot.prec-season {
     background: var(--surface);
     border: 2.5px solid var(--lane);
 }

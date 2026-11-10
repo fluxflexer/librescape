@@ -9,7 +9,7 @@ require_once __DIR__ . '/dates.php';
 
 const ENTRY_TYPES = ['person', 'event', 'period', 'publication'];
 const LINK_TYPES  = ['wikipedia' => 'Wikipedia', 'website' => 'Website', 'cv' => 'CV', 'archive' => 'Archive', 'other' => 'Other'];
-const PRECISIONS  = ['day', 'month', 'year', 'decade', 'circa'];
+const PRECISIONS  = ['day', 'month', 'season', 'year', 'decade', 'circa'];
 
 /** Thrown with field => message pairs; the form shows them next to the fields. */
 final class ValidationError extends RuntimeException
@@ -57,7 +57,7 @@ function smartDate(array $in, string $key, array &$errors, bool $required, strin
     }
     $d = parseSmartDate($text);
     if (!$d) {
-        $errors[$key] = "“{$text}” is not a date I understand. Examples: 21 Sep 1937, Sep 1937, 1937, 1930s, c. 1930.";
+        $errors[$key] = "“{$text}” is not a date I understand. Examples: 21 Sep 1937, Sep 1937, Summer 1937, 1937, 1930s, c. 1930.";
     }
     return $d;
 }

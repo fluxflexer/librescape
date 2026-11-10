@@ -5,7 +5,8 @@
 //   1937                                                   -> year
 //   1930s                                                  -> decade
 //   c. 1930 / ca. 1930 / circa 1930 / ~1930                -> circa
-// Stored as a full date (first day of the month/year/decade) plus the precision, like the rest of the data.
+//   Summer 1937 / Winter 1942/43 / Herbst 1937             -> season (winter 1943 = winter 1942/43)
+// Stored as a full date (first day of the month/year/decade/season) plus the precision, like the rest of the data.
 
 declare(strict_types=1);
 
@@ -17,6 +18,12 @@ const MONTH_NAMES = [
     // German month names, as the data is often typed from German sources
     'januar' => 1, 'jän' => 1, 'februar' => 2, 'märz' => 3, 'mär' => 3, 'mai' => 5, 'juni' => 6, 'juli' => 7,
     'okt' => 10, 'oktober' => 10, 'dez' => 12, 'dezember' => 12,
+];
+
+/** Season words -> first month of the (meteorological) season. */
+const SEASON_NAMES = [
+    'spring' => 3, 'summer' => 6, 'autumn' => 9, 'fall' => 9, 'winter' => 12,
+    'frühling' => 3, 'frühjahr' => 3, 'sommer' => 6, 'herbst' => 9,
 ];
 
 /**
@@ -41,6 +48,25 @@ function parseSmartDate(string $text): ?array
     // circa
     if (preg_match('/^(?:c\.?|ca\.?|circa|approx\.?|~)\s*(\d{1,4})$/', $t, $m)) {
         return $ok((int) $m[1], 1, 1, 'circa');
+    }
+    // season: "Summer 1937", "summer of 1937", "Winter 1942/43", "Winter 1942/1943", "Herbst 1937".
+    // A winter with a single year is the one at the start of that year: "Winter 1943" = Dec 1942 – Feb 1943.
+    if (preg_match('/^([a-zäöü]+),?(?: of)? (\d{1,4})(?:\s*[\/–-]\s*(\d{2}|\d{4}))?$/u', $t, $m) && isset(SEASON_NAMES[$m[1]])) {
+        $start = SEASON_NAMES[$m[1]];
+        $y = (int) $m[2];
+        if (isset($m[3])) {
+            // "1942/43" or "1942/1943": the second year must follow the first, and only winter spans two years
+            $second = strlen($m[3]) === 2 ? intdiv($y, 100) * 100 + (int) $m[3] : (int) $m[3];
+            if (strlen($m[3]) === 2 && $second < $y) {
+                $second += 100;   // 1999/00
+            }
+            if ($start !== 12 || $second !== $y + 1) {
+                return null;
+            }
+        } elseif ($start === 12) {
+            $y--;
+        }
+        return $ok($y, $start, 1, 'season');
     }
     // decade: 1930s, 1930's
     if (preg_match('/^(\d{3})0\'?s$/', $t, $m)) {
@@ -83,4 +109,4 @@ function smartDateText(?string $date, ?string $precision): string
     return $date ? formatDate(substr($date, 0, 10), $precision ?: 'day') : '';
 }
 
-const PRECISION_LABELS = ['day' => 'exact day', 'month' => 'month', 'year' => 'year', 'decade' => 'decade', 'circa' => 'approximate year'];
+const PRECISION_LABELS = ['day' => 'exact day', 'month' => 'month', 'season' => 'season', 'year' => 'year', 'decade' => 'decade', 'circa' => 'approximate year'];

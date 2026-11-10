@@ -69,7 +69,7 @@ function fieldDate(string $name, string $label, ?string $value, array $errors = 
     $id = fieldId($name);
     return '<div class="field date-field"><label for="' . $id . '">' . h($label) . ($required ? ' <span class="req" aria-hidden="true">*</span>' : '') . '</label>'
          . '<input type="text" id="' . $id . '" name="' . h($name) . '" value="' . h($value) . '" class="smart-date" autocomplete="off"'
-         . ' placeholder="e.g. 21 Sep 1937, Sep 1937, 1937, 1930s, c. 1930"' . ($required ? ' required' : '') . errorAttrs($errors, $name) . '>'
+         . ' placeholder="e.g. 21 Sep 1937, Sep 1937, Summer 1937, 1937, 1930s, c. 1930"' . ($required ? ' required' : '') . errorAttrs($errors, $name) . '>'
          . '<output class="date-preview" for="' . $id . '" aria-live="polite"></output>'
          . ($hint ? '<small class="hint">' . $hint . '</small>' : '') . errorText($errors, $name) . '</div>';
 }
