@@ -1,5 +1,33 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/lib/db.php';
+
+// Maintenance mode (switched in the admin app): show a short notice instead of the timeline.
+if (($maintenance = maintenanceMessage()) !== null) {
+    http_response_code(503);
+    header('Retry-After: 600');
+    ?><!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Librescape</title>
+    <style>
+        :root { color-scheme: light dark; }
+        body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px;
+               font: 16px/1.6 system-ui, "Segoe UI", sans-serif; background: #f6f3ee; color: #24211d; }
+        main { max-width: 460px; text-align: center; }
+        h1 { font: 600 30px "Palatino Linotype", Palatino, Georgia, serif; margin: 0 0 8px; }
+        p { color: #5d574f; margin: 0; }
+        @media (prefers-color-scheme: dark) { body { background: #17150f; color: #eee8de; } p { color: #bdb4a6; } }
+    </style>
+</head>
+<body><main><h1>Librescape</h1><p><?= htmlspecialchars($maintenance, ENT_QUOTES, 'UTF-8') ?></p></main></body>
+</html>
+<?php
+    exit;
+}
+
 $v = static fn(string $f): string => $f . '?v=' . (is_file(__DIR__ . '/' . $f) ? filemtime(__DIR__ . '/' . $f) : 0);
 ?><!doctype html>
 <html lang="en">

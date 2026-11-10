@@ -66,6 +66,7 @@
 * { box-sizing: border-box; }
 
 body {
+    accent-color: var(--accent);
     margin: 0;
     background: var(--bg);
     color: var(--ink);
@@ -275,3 +276,11 @@ ul.plain li { padding: 4px 0; border-bottom: 1px solid var(--line); }
     .columns { grid-template-columns: 1fr; }
     table.list { display: block; overflow-x: auto; }
 }
+
+/* ---------------------------------------------------------------- filters, pager, code */
+
+.filters { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; margin-bottom: 14px; }
+.filters label { margin: 0; font-size: 13px; }
+.filters select, .filters input { min-width: 130px; }
+.pager { display: flex; gap: 16px; justify-content: center; align-items: center; margin: 16px 0; color: var(--ink-3); }
+code { font: 12.5px/1.4 ui-monospace, Consolas, monospace; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }

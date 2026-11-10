@@ -42,9 +42,29 @@ function jsonOut($data, int $status = 200): void
     exit;
 }
 
-/** Wrap an API handler so errors come back as JSON instead of HTML. */
+/**
+ * Message to show while the public timeline is in maintenance mode (switched in the admin app), else null.
+ */
+function maintenanceMessage(): ?string
+{
+    try {
+        $rows = q("SELECT name, value FROM app_setting WHERE name IN ('maintenance_mode', 'maintenance_message')");
+    } catch (PDOException $e) {
+        return null;   // settings table not there yet (before the first migration)
+    }
+    $set = array_column($rows, 'value', 'name');
+    return ($set['maintenance_mode'] ?? '0') === '1'
+        ? ($set['maintenance_message'] ?: 'Librescape is being updated and will be back shortly.')
+        : null;
+}
+
+/** Wrap an API handler so errors come back as JSON instead of HTML. Answers 503 in maintenance mode. */
 function apiRun(callable $handler): void
 {
+    if (($msg = maintenanceMessage()) !== null) {
+        header('Retry-After: 600');
+        jsonOut(['error' => $msg, 'maintenance' => true], 503);
+    }
     try {
         $handler();
     } catch (Throwable $e) {
