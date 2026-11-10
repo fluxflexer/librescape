@@ -465,3 +465,63 @@ table.list th a:hover { text-decoration: underline; }
     .row > .combo, .row > input, .row > select { flex: 1 1 100% !important; }
     .savebar { margin: 20px -16px 0; padding: 10px 16px; }
 }
+
+/* ---------------------------------------------------------------- date format info box */
+
+.date-field { position: relative; }
+.date-field > label { display: inline-block; }
+.info-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 17px;
+    height: 17px;
+    margin-left: 6px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid var(--ink-3);
+    background: none;
+    color: var(--ink-3);
+    font: italic 600 11px/1 var(--serif);
+    vertical-align: 1px;
+    cursor: help;
+}
+.info-btn:hover, .info-btn:focus-visible, .help-open .info-btn { color: var(--accent); border-color: var(--accent); }
+.date-help {
+    position: absolute;
+    z-index: 35;
+    left: 0;
+    top: calc(100% + 4px);
+    width: min(440px, calc(100vw - 48px));
+    padding: 12px 14px;
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: var(--shadow);
+    font-size: 13px;
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(-4px);
+    transition: opacity .12s ease, transform .12s ease, visibility 0s linear .12s;
+    pointer-events: none;
+}
+.date-help strong { display: block; font: 600 14px var(--serif); margin-bottom: 6px; }
+.date-help table { border-collapse: collapse; width: 100%; }
+.date-help th { text-align: left; font-weight: 500; color: var(--ink-2); padding: 3px 12px 3px 0; white-space: nowrap; vertical-align: top; }
+.date-help td { padding: 3px 0; line-height: 1.9; }
+.date-help code { white-space: nowrap; }
+.date-help p { margin: 8px 0 0; color: var(--ink-2); line-height: 1.45; }
+/* shown while hovering the (i) or the date field (not while typing in it), when the (i) has keyboard focus, or after a click on it */
+.info-btn:hover + .date-help,
+.info-btn:focus-visible + .date-help,
+.date-field:has(.smart-date:hover:not(:focus)) .date-help,
+.help-open .date-help {
+    visibility: visible;
+    opacity: 1;
+    transform: none;
+    transition-delay: 0s;
+}
+@media (prefers-reduced-motion: reduce) {
+    .date-help { transition: none; transform: none; }
+}

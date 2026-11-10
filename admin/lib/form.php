@@ -63,15 +63,38 @@ function fieldSelect(string $name, string $label, array $options, $value, array 
     return $html . '</select>' . ($hint ? '<small class="hint">' . $hint . '</small>' : '') . errorText($errors, $name) . '</div>';
 }
 
-/** Smart date: free text with a live preview of how it was understood. */
+/** Smart date: free text with a live preview of how it was understood, and an info box with the accepted formats. */
 function fieldDate(string $name, string $label, ?string $value, array $errors = [], bool $required = false, string $hint = ''): string
 {
     $id = fieldId($name);
     return '<div class="field date-field"><label for="' . $id . '">' . h($label) . ($required ? ' <span class="req" aria-hidden="true">*</span>' : '') . '</label>'
+         . '<button type="button" class="info-btn" aria-label="Date formats" aria-describedby="' . $id . '-help">i</button>'
+         . dateHelp($id . '-help')
          . '<input type="text" id="' . $id . '" name="' . h($name) . '" value="' . h($value) . '" class="smart-date" autocomplete="off"'
          . ' placeholder="e.g. 21 Sep 1937, Sep 1937, Summer 1937, 1937, 1930s, c. 1930"' . ($required ? ' required' : '') . errorAttrs($errors, $name) . '>'
          . '<output class="date-preview" for="' . $id . '" aria-live="polite"></output>'
          . ($hint ? '<small class="hint">' . $hint . '</small>' : '') . errorText($errors, $name) . '</div>';
+}
+
+/** The info box of a date field: what can be typed and how exact the result is. */
+function dateHelp(string $id): string
+{
+    $rows = [
+        ['Exact day', ['21 Sep 1937', '21.9.1937', '1937-09-21', 'Sep 21, 1937', '21. September 1937']],
+        ['Month', ['Sep 1937', 'September 1937', '9/1937', '1937-09']],
+        ['Season', ['Summer 1937', 'Autumn 1914', 'Fall 1914', 'Frühjahr 1945', 'Winter 1942/43']],
+        ['Year', ['1937']],
+        ['Decade', ['1930s']],
+        ['Approximate', ['c. 1930', 'ca. 1930', 'circa 1930', '~1930']],
+    ];
+    $html = '<div class="date-help" role="tooltip" id="' . h($id) . '"><strong>Date formats</strong><table>';
+    foreach ($rows as [$kind, $examples]) {
+        $html .= '<tr><th scope="row">' . h($kind) . '</th><td>'
+               . implode(' · ', array_map(fn($e) => '<code>' . h($e) . '</code>', $examples)) . '</td></tr>';
+    }
+    return $html . '</table><p>English and German month and season names work. Seasons are meteorological:'
+         . ' winter is Dec–Feb, so “Winter 1943” means winter 1942/43.'
+         . ' The line below the field shows how your date was understood.</p></div>';
 }
 
 /**

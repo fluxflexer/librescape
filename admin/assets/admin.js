@@ -420,6 +420,24 @@
         root.querySelectorAll('.smart-date').forEach((i) => { if (i.value.trim()) datePreview(i); });
     }
 
+    // The date-format box opens on mouse-over (CSS); a click keeps it open (touch screens), Escape closes it.
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.info-btn');
+        document.querySelectorAll('.date-field.help-open').forEach((f) => {
+            if (!btn || f !== btn.closest('.date-field')) f.classList.remove('help-open');
+        });
+        if (btn) btn.closest('.date-field').classList.toggle('help-open');
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        const open = document.querySelector('.date-field.help-open');
+        if (open) {
+            open.classList.remove('help-open');
+            e.preventDefault();
+            e.stopPropagation(); // don't close a surrounding dialog
+        }
+    }, true);
+
     // ------------------------------------------------------------------ selects with "+ New …"
 
     document.addEventListener('focusin', (e) => {
@@ -460,6 +478,7 @@
         dialog.querySelectorAll('[id]').forEach((n) => { n.id = prefix + n.id; });
         dialog.querySelectorAll('label[for], output[for]').forEach((n) => n.setAttribute('for', prefix + n.getAttribute('for')));
         dialog.querySelectorAll('[aria-labelledby]').forEach((n) => n.setAttribute('aria-labelledby', prefix + n.getAttribute('aria-labelledby')));
+        dialog.querySelectorAll('.info-btn[aria-describedby]').forEach((n) => n.setAttribute('aria-describedby', prefix + n.getAttribute('aria-describedby')));
         if (dialog.hasAttribute('aria-labelledby')) dialog.setAttribute('aria-labelledby', prefix + dialog.getAttribute('aria-labelledby'));
         document.body.append(dialog);
 
