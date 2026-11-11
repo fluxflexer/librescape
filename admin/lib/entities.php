@@ -6,6 +6,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/dates.php';
+require_once dirname(__DIR__, 2) . '/lib/images.php';
 
 // 'publication' = a work (The Hobbit), 'edition' = a publication it appeared in (see sql/migrations/005_editions.sql).
 const ENTRY_TYPES = ['person', 'event', 'period', 'publication', 'edition'];
@@ -392,6 +393,7 @@ function saveEntry(string $type, ?int $id, array $in, ?int $version = null): int
         throw new ValidationError($errors);
     }
 
+    $wikiBefore = $id !== null ? firstWikipediaUrl($type, $id) : null;
     $db = getDb();
     $db->beginTransaction();
     try {
@@ -449,11 +451,23 @@ function saveEntry(string $type, ?int $id, array $in, ?int $version = null): int
             logChange($type, $id, 'update', entryLabel($type, $id), $changes);
         }
         $db->commit();
-        return $id;
     } catch (Throwable $e) {
         $db->rollBack();
         throw $e;
     }
+    // The picture comes from the first Wikipedia link; fetched after the commit, as it needs the internet.
+    lastImageResult(refreshEntryImage($type, $id, $wikiBefore));
+    return $id;
+}
+
+/** What happened to the picture in the last saveEntry(): stored, none, removed, unchanged or error. */
+function lastImageResult(?string $set = null): ?string
+{
+    static $last = null;
+    if ($set !== null) {
+        $last = $set;
+    }
+    return $last;
 }
 
 /** The form fields compared for the change log, per type (dates in their readable form). */

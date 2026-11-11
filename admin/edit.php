@@ -90,6 +90,16 @@ if (isPost()) {
         $version = isset($_POST['row_version']) && $id ? (int) $_POST['row_version'] : null;
         $savedId = saveEntry($type, $id, $_POST, $version);
         $label = entryLabel($type, $savedId);
+        $picture = match (lastImageResult()) {
+            'stored'  => 'The picture was loaded from Wikipedia.',
+            'none'    => 'The Wikipedia article has no freely licensed picture, so none is shown.',
+            'removed' => 'The picture was removed, as the entry has no Wikipedia link any more.',
+            'error'   => 'The picture could not be loaded from Wikipedia right now; it is tried again the next time you save.',
+            default   => null,
+        };
+        if ($picture) {
+            flash($picture, lastImageResult() === 'error' ? 'warn' : 'info');
+        }
         switch ($_POST['after'] ?? 'stay') {
             case 'new':
                 flash("Saved “{$label}”. Here is a new, empty " . TYPE_TITLES[$type] . '.');

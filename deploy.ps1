@@ -56,9 +56,15 @@ if ($ResetDb -or $FetchImages) {
 }
 
 robocopy $src $dest /MIR /NFL /NDL /NJH /NP `
-    /XD models data_representation sql tools notes .git .claude `
+    /XD models data_representation sql tools notes .git .claude media `
     /XF deploy.ps1 Description.md README.md config.example.php .gitignore *.bak *.mwb | Out-Null
 if ($LASTEXITCODE -ge 8) { Write-Error "robocopy failed ($LASTEXITCODE)"; exit 1 }
+# Pictures: copied without /MIR, because the admin app stores the pictures of entries saved there
+# directly in the web root (media/wiki); mirroring would delete them.
+if (Test-Path (Join-Path $src 'media')) {
+    robocopy (Join-Path $src 'media') (Join-Path $dest 'media') /E /NFL /NDL /NJH /NP | Out-Null
+    if ($LASTEXITCODE -ge 8) { Write-Error "robocopy of media failed ($LASTEXITCODE)"; exit 1 }
+}
 Write-Host "Deployed to $dest"
 
 exit 0  # robocopy uses 1-7 for success; don't leak that as a failure
