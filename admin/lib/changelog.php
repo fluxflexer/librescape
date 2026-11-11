@@ -4,7 +4,7 @@
 declare(strict_types=1);
 
 const ENTITY_LABELS = [
-    'person' => 'Person', 'event' => 'Event', 'period' => 'Period', 'publication' => 'Work',
+    'person' => 'Person', 'event' => 'Event', 'period' => 'Period', 'publication' => 'Work', 'edition' => 'Publication',
     'relationship' => 'Relation', 'source' => 'Source', 'keyword' => 'Keyword', 'track' => 'Lane',
     'relation_type' => 'Relation type', 'pub_category' => 'Category', 'user' => 'User', 'setting' => 'Setting',
     'backup' => 'Backup',
@@ -90,7 +90,7 @@ function renderChangeLog(array $rows, bool $showEntry = true): string
         $entry = '';
         if ($showEntry) {
             $label = (ENTITY_LABELS[$r['entity_type']] ?? $r['entity_type']) . ' · ' . ($r['label'] ?? '#' . $r['entity_id']);
-            $link = in_array($r['entity_type'], ['person', 'event', 'period', 'publication'], true) && $r['action'] !== 'delete' && $r['entity_id']
+            $link = in_array($r['entity_type'], ['person', 'event', 'period', 'publication', 'edition'], true) && $r['action'] !== 'delete' && $r['entity_id']
                 ? '<a href="' . h(adminUrl('edit.php') . '?type=' . $r['entity_type'] . '&id=' . $r['entity_id']) . '">' . h($label) . '</a>'
                 : h($label);
             $entry = "<td>$link</td>";
@@ -109,6 +109,7 @@ const FIELD_LABELS = [
     'author3_id' => 'third author', 'parent_work_id' => 'part of work', 'category_id' => 'category',
     'start' => 'from', 'end' => 'to', 'birth' => 'born', 'death' => 'died', 'release' => 'published',
     'is_active' => 'active', 'source_type' => 'kind', 'published_date' => 'published', 'accessed_date' => 'accessed',
+    'published_in' => 'published in', 'contents' => 'contains', 'isbn' => 'ISBN',
 ];
 
 function renderChanges(string $action, ?string $json): string

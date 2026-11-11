@@ -444,7 +444,7 @@
 
     // Deep links like index.php#event-12 (used by the admin app's "Save & view in timeline").
     function openFromHash() {
-        const m = /^#(event|period|publication|person|source)-(\d+)$/.exec(location.hash);
+        const m = /^#(event|period|publication|edition|person|source)-(\d+)$/.exec(location.hash);
         if (m) openDetails(m[1], Number(m[2]), { focus: true });
     }
 
@@ -641,6 +641,7 @@
             section('Contains', refList(d.children)),
             section(d.type === 'person' ? 'Relations' : 'People', persons),
             section(d.type === 'person' ? 'Works' : 'Related', refList(d.related)),
+            section('Published in', refList(d.publishedIn)),
             isSource ? section('Cited by', refList(d.citedBy) || el('p', { class: 'muted' }, 'Not cited by any entry yet.')) : null,
             section('Links', links),
             section('Sources', sources),
@@ -673,7 +674,7 @@
         const it = d.itemId && all.get(d.itemId);
         const g = it && groups.get(it.group);
         if (g) return g.className;
-        return d.type === 'publication' ? 'lane-pubs' : '';
+        return d.type === 'publication' || d.type === 'edition' ? 'lane-pubs' : '';
     }
 
     function closePanel() {

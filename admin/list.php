@@ -1,6 +1,6 @@
 <?php
 // List of entries of one type with search, filters, sorting and paging.
-//   list.php?type=event|period|publication|person [&q=…&track=…&keyword=…&nosource=1&sort=…&dir=asc|desc&page=…]
+//   list.php?type=event|period|publication|edition|person [&q=…&track=…&keyword=…&nosource=1&sort=…&dir=asc|desc&page=…]
 declare(strict_types=1);
 require __DIR__ . '/lib/bootstrap.php';
 require_once __DIR__ . '/lib/entities.php';
@@ -61,6 +61,18 @@ $config = [
         'default' => 'date',
         'kw'    => ['publication_keyword', 'publication_id'],
         'head'  => ['label' => 'Title', 'date' => 'Published', 'track' => 'Category', 'author' => 'Author'],
+    ],
+    'edition' => [
+        'title' => 'Publications', 'new' => 'New publication',
+        'from'  => 'edition x',
+        'cols'  => "x.id, x.title AS label, x.release_date AS d, x.release_precision AS dp, x.kind, x.publisher,
+                    (SELECT COUNT(*) FROM edition_work ew WHERE ew.edition_id = x.id) AS works",
+        'base'  => '1 = 1',
+        'search'=> ['x.title', 'x.publisher', 'x.isbn', 'x.description'],
+        'sort'  => ['label' => 'x.title', 'date' => 'x.release_date', 'kind' => 'x.kind', 'publisher' => 'x.publisher', 'works' => 'works'],
+        'default' => 'date',
+        'kw'    => ['edition_keyword', 'edition_id'],
+        'head'  => ['label' => 'Title', 'date' => 'Published', 'kind' => 'Kind', 'publisher' => 'Publisher', 'works' => 'Works'],
     ],
     'person' => [
         'title' => 'People', 'new' => 'New person',
@@ -178,7 +190,7 @@ pageHeader($config['title'], $type);
             <td><a href="<?= h(adminUrl("edit.php?type=$type&id={$r['id']}")) ?>"><?= h($r['label']) ?></a></td>
             <td class="nowrap"><?= h($date) ?></td>
             <?php foreach (array_slice(array_keys($config['head']), 2) as $col): ?>
-                <td><?= h($r[$col] ?? '') ?></td>
+                <td><?= h($col === 'kind' ? (EDITION_KINDS[$r[$col]] ?? $r[$col]) : (string) ($r[$col] ?? '')) ?></td>
             <?php endforeach; ?>
             <td><?= (int) $r['nsrc'] ?: '<span class="badge warn">none</span>' ?></td>
         </tr>

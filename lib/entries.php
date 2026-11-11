@@ -35,6 +35,29 @@ function imageFor(string $type, int $id): ?array
 
 const SOURCE_TYPE_LABELS = ['book' => 'Book', 'newspaper' => 'Newspaper article', 'wikipedia' => 'Wikipedia'];
 
+/** Kinds of publication (table edition; see sql/migrations/005_editions.sql for the naming). */
+const EDITION_KINDS = [
+    'book' => 'Book', 'collection' => 'Collection', 'anthology' => 'Anthology',
+    'journal' => 'Journal / proceedings', 'magazine' => 'Magazine', 'other' => 'Other',
+];
+
+/** Publications a work appeared in, oldest first: [{label, note, type, id, itemId}]. */
+function editionsOfWork(int $workId): array
+{
+    $out = [];
+    foreach (q('SELECT ed.id, ed.title, ed.release_date, ed.release_precision, ew.locator, ew.first_publication
+                  FROM edition_work ew JOIN edition ed ON ed.id = ew.edition_id
+                 WHERE ew.work_id = ? ORDER BY ed.release_date IS NULL, ed.release_date, ed.title', [$workId]) as $e) {
+        $note = array_filter([
+            $e['first_publication'] ? 'first published here' : null,
+            $e['release_date'] ? formatDate($e['release_date'], $e['release_precision']) : null,
+            $e['locator'],
+        ]);
+        $out[] = ['label' => $e['title'], 'note' => implode(' · ', $note), 'type' => 'edition', 'id' => (int) $e['id'], 'itemId' => null];
+    }
+    return $out;
+}
+
 /** One-line bibliographic citation for a source row. */
 function citation(array $s): string
 {
@@ -89,6 +112,10 @@ function entryRef(string $type, int $id): ?array
             $w = q1('SELECT id, title, release_date, release_precision, gestation_period_id FROM publication WHERE id = ?', [$id]);
             return $w ? ['label' => $w['title'], 'note' => $w['release_date'] ? formatDate($w['release_date'], $w['release_precision']) : 'work',
                          'type' => 'publication', 'id' => $id, 'itemId' => pubItemId($w)] : null;
+        case 'edition':
+            $e = q1('SELECT title, release_date, release_precision FROM edition WHERE id = ?', [$id]);
+            return $e ? ['label' => $e['title'], 'note' => $e['release_date'] ? formatDate($e['release_date'], $e['release_precision']) : 'publication',
+                         'type' => 'edition', 'id' => $id, 'itemId' => null] : null;
     }
     return null;
 }
@@ -181,6 +208,7 @@ function entriesWithoutSource(): array
         'event'       => 'SELECT id, name AS label FROM event WHERE is_marker = 0',
         'period'      => 'SELECT id, name AS label FROM period',
         'publication' => 'SELECT id, title AS label FROM publication',
+        'edition'     => 'SELECT id, title AS label FROM edition',
     ];
     $out = [];
     foreach ($checks as $type => $sql) {

@@ -7,6 +7,10 @@ SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- Tables added by sql/migrations/ (re-created by tools/migrate.php after a reset)
+DROP TABLE IF EXISTS edition_keyword;
+DROP TABLE IF EXISTS edition_work;
+DROP TABLE IF EXISTS edition_editor;
+DROP TABLE IF EXISTS edition;
 DROP TABLE IF EXISTS schema_migration;
 DROP TABLE IF EXISTS app_setting;
 DROP TABLE IF EXISTS change_log;

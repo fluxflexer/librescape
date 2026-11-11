@@ -1,5 +1,6 @@
 <?php
-// GET ?type=event|period|publication|person&id=N -> details for the detail panel.
+// GET ?type=event|period|publication|edition|person|source&id=N -> details for the detail panel.
+// ("publication" is a work; "edition" is a publication such as a book or journal issue that contains works.)
 // Every type returns the same shape:
 //   { type, id, itemId, title, kind, date, description, keywords[], persons[], related[], links[], window? }
 
@@ -34,7 +35,7 @@ function sourceDetails(int $id): ?array
     }
     $citedBy = [];
     foreach (q("SELECT entity_type, entity_id, locator FROM source_ref WHERE source_id = ?
-                 ORDER BY FIELD(entity_type, 'person', 'event', 'period', 'publication'), entity_id", [$id]) as $r) {
+                 ORDER BY FIELD(entity_type, 'person', 'event', 'period', 'publication', 'edition'), entity_id", [$id]) as $r) {
         if ($ref = entryRef($r['entity_type'], (int) $r['entity_id'])) {
             if ($r['locator']) {
                 $ref['note'] = trim($ref['note'] . ' · ' . $r['locator'], ' ·');
@@ -218,9 +219,65 @@ function publicationDetails(int $id): ?array
         'keywords'    => keywordsFor('publication_keyword', 'publication_id', $id),
         'persons'     => $persons,
         'related'     => $related,
+        'publishedIn' => editionsOfWork($id),
         'links'       => weblinksFor('publication', $id),
         'sources'     => sourcesFor('publication', $id),
         'image'       => imageFor('publication', $id),
+    ];
+}
+
+/** A publication (book, collection, journal issue ...): not drawn on the timeline, its works are. */
+function editionDetails(int $id): ?array
+{
+    $e = q1('SELECT * FROM edition WHERE id = ?', [$id]);
+    if (!$e) {
+        return null;
+    }
+    $facts = array_values(array_filter([
+        ['label' => 'Publisher', 'value' => trim(($e['publisher'] ?? '') . ($e['place'] ? ', ' . $e['place'] : ''), ', ') ?: null],
+        ['label' => 'ISBN', 'value' => $e['isbn']],
+    ], fn($f) => $f['value'] !== null && $f['value'] !== ''));
+
+    $persons = [];
+    foreach (q('SELECT p.id, p.first_name, p.surname FROM edition_editor x JOIN person p ON p.id = x.person_id
+                 WHERE x.edition_id = ? ORDER BY x.sort_order', [$id]) as $p) {
+        $persons[] = ['id' => (int) $p['id'], 'name' => personName($p), 'role' => 'editor'];
+    }
+    $children = [];
+    $workIds = [];
+    foreach (q('SELECT w.id, w.title, w.release_date, w.gestation_period_id, x.locator, x.first_publication
+                  FROM edition_work x JOIN publication w ON w.id = x.work_id
+                 WHERE x.edition_id = ? ORDER BY x.sort_order', [$id]) as $w) {
+        $workIds[] = (int) $w['id'];
+        $children[] = ['label' => $w['title'], 'note' => implode(' · ', array_filter([$w['first_publication'] ? 'first published here' : null, $w['locator']])),
+                       'type' => 'publication', 'id' => (int) $w['id'], 'itemId' => pubItemId($w)];
+    }
+    // Authors of the works, for collections and anthologies.
+    if ($workIds) {
+        $in = implode(',', $workIds);   // integers only
+        foreach (q("SELECT DISTINCT p.id, p.first_name, p.surname FROM publication w JOIN person p ON p.id IN (w.author_id, w.author2_id, w.author3_id)
+                     WHERE w.id IN ($in) ORDER BY p.surname") as $p) {
+            if (!in_array((int) $p['id'], array_column($persons, 'id'), true)) {
+                $persons[] = ['id' => (int) $p['id'], 'name' => personName($p), 'role' => 'author'];
+            }
+        }
+    }
+    return [
+        'type'        => 'edition',
+        'id'          => (int) $e['id'],
+        'itemId'      => null,
+        'title'       => $e['title'],
+        'kind'        => 'Publication · ' . (EDITION_KINDS[$e['kind']] ?? $e['kind']),
+        'date'        => $e['release_date'] ? 'Published ' . formatDate($e['release_date'], $e['release_precision']) : null,
+        'description' => $e['description'],
+        'keywords'    => keywordsFor('edition_keyword', 'edition_id', $id),
+        'facts'       => $facts,
+        'persons'     => $persons,
+        'children'    => $children,
+        'related'     => [],
+        'links'       => weblinksFor('edition', $id),
+        'sources'     => sourcesFor('edition', $id),
+        'image'       => imageFor('edition', $id),
     ];
 }
 
@@ -260,6 +317,11 @@ function personDetails(int $id): ?array
         $related[] = ['label' => $w['title'], 'note' => $w['release_date'] ? formatDate($w['release_date'], $w['release_precision']) : '',
                       'type' => 'publication', 'id' => (int) $w['id'], 'itemId' => pubItemId($w)];
     }
+    foreach (q('SELECT e.id, e.title, e.release_date, e.release_precision FROM edition_editor x JOIN edition e ON e.id = x.edition_id
+                 WHERE x.person_id = ? ORDER BY e.release_date IS NULL, e.release_date', [$id]) as $e) {
+        $related[] = ['label' => $e['title'], 'note' => trim('editor · ' . ($e['release_date'] ? formatDate($e['release_date'], $e['release_precision']) : ''), ' ·'),
+                      'type' => 'edition', 'id' => (int) $e['id'], 'itemId' => null];
+    }
 
     $born = $p['date_of_birth'] ? formatDate($p['date_of_birth'], $p['birth_precision'] ?? 'day') : '?';
     $died = $p['date_of_death'] ? formatDate($p['date_of_death'], $p['death_precision'] ?? 'day') : '';
@@ -294,6 +356,7 @@ apiRun(function () {
         'event'       => 'eventDetails',
         'period'      => 'periodDetails',
         'publication' => 'publicationDetails',
+        'edition'     => 'editionDetails',
         'person'      => 'personDetails',
         'source'      => 'sourceDetails',
     ];

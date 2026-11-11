@@ -20,6 +20,7 @@ try {
         case 'event':
         case 'period':
         case 'publication':
+        case 'edition':
             $id = saveEntry($type, null, $in);
             $label = entryLabel($type, $id);
             $e = loadEntry($type, $id);
@@ -28,6 +29,7 @@ try {
                 'event'       => $e['date'],
                 'period'      => $e['start'] . ' – ' . $e['end'],
                 'publication' => $e['release'] ?: 'unpublished',
+                'edition'     => trim(($e['release'] ?: '') . ' · ' . EDITION_KINDS[$e['kind']], ' ·'),
             };
             break;
 

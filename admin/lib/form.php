@@ -168,6 +168,13 @@ function rowButtons(bool $sortable = false): string
          . '<button type="button" class="icon row-remove" aria-label="Remove" title="Remove">×</button></span>';
 }
 
+/** "first published here" tick box in a contents / published-in row. */
+function firstCheckbox(string $name, bool $checked): string
+{
+    return '<label class="inline first-pub" title="First published here"><input type="checkbox" name="' . h($name) . '" value="1"'
+         . ($checked ? ' checked' : '') . '> first</label>';
+}
+
 function linksBlock(array $rows, array $errors): string
 {
     return rowsBlock('links', 'Links', $rows, function (string $i, array $r): string {

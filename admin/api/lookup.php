@@ -1,5 +1,5 @@
 <?php
-// GET ?type=person|event|period|publication|source|keyword&q=text[&exclude=id]
+// GET ?type=person|event|period|publication|edition|source|keyword&q=text[&exclude=id]
 //  -> { results: [{id, label, sub}] } for the search-as-you-type dropdowns (max. 20, best matches first).
 declare(strict_types=1);
 require __DIR__ . '/../lib/bootstrap.php';
@@ -52,6 +52,18 @@ try {
                    ORDER BY (w.title LIKE ?) DESC, w.release_date IS NULL, w.release_date LIMIT " . LOOKUP_LIMIT,
                  [$exclude, $like, $like, $term, $start])),
 
+        // Publications (books, collections, journal issues) - internal type "edition".
+        'edition' => array_map(fn($r) => [
+                'id' => (int) $r['id'], 'label' => $r['title'],
+                'sub' => trim(implode(' · ', array_filter([
+                    $r['release_date'] ? formatDate($r['release_date'], $r['release_precision']) : null,
+                    EDITION_KINDS[$r['kind']] ?? null, $r['publisher'],
+                ]))),
+            ], q("SELECT id, title, kind, publisher, release_date, release_precision FROM edition
+                   WHERE id <> ? AND (title LIKE ? OR publisher LIKE ? OR isbn = ?)
+                   ORDER BY (title LIKE ?) DESC, release_date IS NULL, release_date LIMIT " . LOOKUP_LIMIT,
+                 [$exclude, $like, $like, $term, $start])),
+
         'source' => array_map(fn($r) => [
                 'id' => (int) $r['id'], 'label' => $r['code'] . ' · ' . $r['title'],
                 'sub' => SOURCE_TYPE_LABELS[$r['source_type']] . ($r['author'] ? ' · ' . $r['author'] : '')
@@ -68,7 +80,8 @@ try {
             ], q("SELECT k.id, k.name,
                          (SELECT COUNT(*) FROM event_keyword x WHERE x.keyword_id = k.id)
                        + (SELECT COUNT(*) FROM period_keyword x WHERE x.keyword_id = k.id)
-                       + (SELECT COUNT(*) FROM publication_keyword x WHERE x.keyword_id = k.id) AS n
+                       + (SELECT COUNT(*) FROM publication_keyword x WHERE x.keyword_id = k.id)
+                       + (SELECT COUNT(*) FROM edition_keyword x WHERE x.keyword_id = k.id) AS n
                     FROM keyword k WHERE k.name LIKE ?
                    ORDER BY (k.name LIKE ?) DESC, n DESC, k.name LIMIT " . LOOKUP_LIMIT, [$like, $start])),
 

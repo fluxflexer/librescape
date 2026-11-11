@@ -40,7 +40,10 @@ Once people enter data in the admin app, the database holds the real data:
 
 ## Admin app
 
-- **Editors** create, change and delete events, periods, works and people, with keywords, links, sources and relations.
+- **Editors** create, change and delete events, periods, works, publications and people, with keywords, links, sources and relations.
+  A *work* is a text (The Hobbit, On Fairy-Stories); a *publication* is a book, collection or journal issue that contains works.
+  A work can appear in several publications (first printing, reprints, collections). Publications are not drawn on the timeline;
+  they appear in the details of their works. (In the database, works are the table `publication` and publications the table `edition`.)
   Dropdowns search existing entries as you type; “+ Create …” adds a new person, source, period etc. without leaving the form.
   Dates are typed as you know them: `21 Sep 1937`, `Sep 1937`, `Summer 1937`, `Winter 1942/43`, `1937`, `1930s`, `c. 1930`.
 - **Administrators** also manage users, backups and maintenance mode (the public timeline is offline, editors are locked out).

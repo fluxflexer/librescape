@@ -1,5 +1,5 @@
 <?php
-// Quick-create dialogs: small forms for creating a person, event, period, work, source, relation type or category
+// Quick-create dialogs: small forms for creating a person, event, period, work, publication, source, relation type or category
 // without leaving the current form. Rendered once per page as <template>s; admin.js opens them in a <dialog>
 // and posts them to api/quick_create.php. The dialogs use the same save rules as the full forms.
 
@@ -62,6 +62,13 @@ function quickCreateTemplates(): string
         . '<div class="two">' . fieldDate('release', 'Published', '') . '<div class="field"><label>Author</label>'
         . comboWidget('author_id', 'person', null, null, null) . '</div></div>'
         . qcSourceField());
+
+    $html .= qcDialog('edition', 'New publication', 'edition', 'title',
+        fieldText('title', 'Title', '', $none, ['required' => true])
+        . '<div class="two">' . fieldSelect('kind', 'Kind', EDITION_KINDS, 'book', $none) . fieldDate('release', 'Published', '') . '</div>'
+        . '<div class="two">' . fieldText('publisher', 'Publisher', '', $none) . fieldText('place', 'Place', '', $none) . '</div>'
+        . qcSourceField(),
+        'A book, collection or journal issue the work appeared in. Editors, ISBN and contents can be added in its own form.');
 
     $types = '';
     foreach (SOURCE_TYPE_LABELS as $v => $l) {

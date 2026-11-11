@@ -7,7 +7,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/dates.php';
 
-const ENTRY_TYPES = ['person', 'event', 'period', 'publication'];
+// 'publication' = a work (The Hobbit), 'edition' = a publication it appeared in (see sql/migrations/005_editions.sql).
+const ENTRY_TYPES = ['person', 'event', 'period', 'publication', 'edition'];
 const LINK_TYPES  = ['wikipedia' => 'Wikipedia', 'website' => 'Website', 'cv' => 'CV', 'archive' => 'Archive', 'other' => 'Other'];
 const PRECISIONS  = ['day', 'month', 'season', 'year', 'decade', 'circa'];
 
@@ -29,7 +30,8 @@ final class ConflictError extends RuntimeException
 
 function str(array $in, string $key, int $max = 0): string
 {
-    $v = trim((string) ($in[$key] ?? ''));
+    // mb_scrub: malformed UTF-8 (e.g. from a script posting Windows-1252) would make the database refuse the row.
+    $v = trim(mb_scrub((string) ($in[$key] ?? ''), 'UTF-8'));
     return $max > 0 ? mb_substr($v, 0, $max) : $v;
 }
 
@@ -85,7 +87,8 @@ function trackName(?int $id): ?string
 
 // ------------------------------------------------------------------ keywords, weblinks, sources (shared by all entry types)
 
-const KEYWORD_TABLES = ['event' => ['event_keyword', 'event_id'], 'period' => ['period_keyword', 'period_id'], 'publication' => ['publication_keyword', 'publication_id']];
+const KEYWORD_TABLES = ['event' => ['event_keyword', 'event_id'], 'period' => ['period_keyword', 'period_id'], 'publication' => ['publication_keyword', 'publication_id'],
+                        'edition' => ['edition_keyword', 'edition_id']];
 
 function keywordNames(string $type, int $id): array
 {
@@ -203,11 +206,19 @@ function subListSummary(string $type, int $id): array
     foreach (sourceRefRows($type, $id) as $r) {
         $codes[] = $r['code'] . ($r['locator'] ? ' ' . $r['locator'] : '');
     }
-    return [
+    $out = [
         'keywords' => keywordNames($type, $id),
         'links'    => array_map(fn($l) => $l['url'] . ($l['label'] ? " ({$l['label']})" : ''), linkRows($type, $id)),
         'sources'  => $codes,
     ];
+    $contentLine = static fn(array $r, string $label) => $label . ($r['locator'] ? ', ' . $r['locator'] : '') . ($r['first'] ? ' (first)' : '');
+    if ($type === 'edition') {
+        $out['editors'] = array_column(editorRows($id), 'label');
+        $out['contents'] = array_map(fn($r) => $contentLine($r, $r['work_label']), contentRows($id));
+    } elseif ($type === 'publication') {
+        $out['published_in'] = array_map(fn($r) => $contentLine($r, $r['edition_label']), publishedInRows($id));
+    }
+    return $out;
 }
 
 // ------------------------------------------------------------------ labels
@@ -223,6 +234,8 @@ function entryLabel(string $type, int $id): string
             return (string) (q1('SELECT name FROM period WHERE id = ?', [$id])['name'] ?? '');
         case 'publication':
             return (string) (q1('SELECT title FROM publication WHERE id = ?', [$id])['title'] ?? '');
+        case 'edition':
+            return (string) (q1('SELECT title FROM edition WHERE id = ?', [$id])['title'] ?? '');
         case 'source':
             $s = q1('SELECT code, title FROM source WHERE id = ?', [$id]);
             return $s ? $s['code'] . ' · ' . $s['title'] : '';
@@ -270,6 +283,16 @@ function loadEntry(string $type, int $id): ?array
                 return null;
             }
             $r['release'] = smartDateText($r['release_date'], $r['release_precision']);
+            $r['published_in'] = publishedInRows($id);
+            break;
+        case 'edition':
+            $r = q1('SELECT * FROM edition WHERE id = ?', [$id]);
+            if (!$r) {
+                return null;
+            }
+            $r['release'] = smartDateText($r['release_date'], $r['release_precision']);
+            $r['editors'] = editorRows($id);
+            $r['contents'] = contentRows($id);
             break;
         default:
             return null;
@@ -278,6 +301,30 @@ function loadEntry(string $type, int $id): ?array
     $r['links'] = linkRows($type, $id);
     $r['sources'] = sourceRefRows($type, $id);
     return $r;
+}
+
+/** Editors of a publication, in order: [{person_id, label}]. */
+function editorRows(int $editionId): array
+{
+    return array_map(fn($r) => ['person_id' => (int) $r['id'], 'label' => personName($r)],
+        q('SELECT p.id, p.first_name, p.surname FROM edition_editor x JOIN person p ON p.id = x.person_id
+            WHERE x.edition_id = ? ORDER BY x.sort_order, p.surname', [$editionId]));
+}
+
+/** Works in a publication, in order: [{work_id, work_label, locator, first}]. */
+function contentRows(int $editionId): array
+{
+    return array_map(fn($r) => ['work_id' => (int) $r['work_id'], 'work_label' => $r['title'], 'locator' => $r['locator'], 'first' => (bool) $r['first_publication']],
+        q('SELECT x.work_id, x.locator, x.first_publication, w.title FROM edition_work x JOIN publication w ON w.id = x.work_id
+            WHERE x.edition_id = ? ORDER BY x.sort_order, w.title', [$editionId]));
+}
+
+/** Publications a work appeared in, oldest first: [{edition_id, edition_label, locator, first}]. */
+function publishedInRows(int $workId): array
+{
+    return array_map(fn($r) => ['edition_id' => (int) $r['edition_id'], 'edition_label' => $r['title'], 'locator' => $r['locator'], 'first' => (bool) $r['first_publication']],
+        q('SELECT x.edition_id, x.locator, x.first_publication, e.title FROM edition_work x JOIN edition e ON e.id = x.edition_id
+            WHERE x.work_id = ? ORDER BY e.release_date IS NULL, e.release_date, e.title', [$workId]));
 }
 
 /** Relations of a person from their point of view: [{id, role ("typeId:1|2"), other_id, other_label, status}]. */
@@ -338,6 +385,7 @@ function saveEntry(string $type, ?int $id, array $in, ?int $version = null): int
         'event'       => validateEvent($id, $in, $errors),
         'period'      => validatePeriod($id, $in, $errors),
         'publication' => validatePublication($id, $in, $errors),
+        'edition'     => validateEdition($id, $in, $errors),
         default       => throw new InvalidArgumentException("Unknown type $type"),
     };
     if ($errors) {
@@ -365,6 +413,7 @@ function saveEntry(string $type, ?int $id, array $in, ?int $version = null): int
             'event'       => writeEvent($id, $row),
             'period'      => writePeriod($id, $row),
             'publication' => writePublication($id, $row),
+            'edition'     => writeEdition($id, $row),
         };
         saveKeywords($type, $id, $keywords);
         saveLinks($type, $id, $links);
@@ -373,6 +422,13 @@ function saveEntry(string $type, ?int $id, array $in, ?int $version = null): int
         // (Quick-create dialogs don't, and leave relations alone.)
         if ($type === 'person' && (!empty($in['relations_form']) || array_key_exists('relations', $in))) {
             savePersonRelations($id, $row['_relations']);
+        }
+        if ($type === 'edition') {
+            saveEditionLists($id, $row['_editors'], $row['_contents']);
+        }
+        // Like relations: only the full work form (published_in_form=1) changes where a work was published.
+        if ($type === 'publication' && isset($row['_published_in'])) {
+            saveWorkEditions($id, $row['_published_in']);
         }
 
         $uid = currentUser()['id'] ?? null;
@@ -386,7 +442,7 @@ function saveEntry(string $type, ?int $id, array $in, ?int $version = null): int
                 array_filter(array_intersect_key($afterReadable, array_flip($fields)) + subListSummary($type, $id), fn($v) => $v !== null && $v !== '' && $v !== []));
         } else {
             $changes = diffRecords($beforeReadable, $afterReadable, $fields)
-                     + diffRecords($beforeSubs, subListSummary($type, $id), ['keywords', 'links', 'sources']);
+                     + diffRecords($beforeSubs, subListSummary($type, $id), array_keys($beforeSubs));
             if ($type === 'person') {
                 $changes += diffRecords(['relations' => relationSummary($before['relations'])], ['relations' => relationSummary($after['relations'])], ['relations']);
             }
@@ -406,6 +462,7 @@ const FORM_FIELDS = [
     'event'       => ['name', 'short_name', 'description', 'date', 'track_id', 'parent_period_id', 'person1_id', 'person2_id'],
     'period'      => ['name', 'description', 'track_id', 'parent_period_id', 'start', 'start_name', 'start_description', 'end', 'end_name', 'end_description'],
     'publication' => ['title', 'short_title', 'shortcode', 'category_id', 'author_id', 'author2_id', 'author3_id', 'parent_work_id', 'release', 'gestation_period_id', 'description'],
+    'edition'     => ['title', 'kind', 'release', 'publisher', 'place', 'isbn', 'description'],
 ];
 
 /** Fields that hold the id of another entry, and what they point to. */
@@ -428,6 +485,9 @@ function readableEntry(array $r): array
             'pub_category' => q1('SELECT category FROM pub_category WHERE id = ?', [$id])['category'] ?? null,
             default        => entryLabel($refType, $id),
         } ?? "#$id";
+    }
+    if (isset($r['kind'], EDITION_KINDS[$r['kind']])) {
+        $r['kind'] = EDITION_KINDS[$r['kind']];
     }
     return $r;
 }
@@ -711,6 +771,24 @@ function validatePublication(?int $id, array $in, array &$errors): array
     if ($row['gestation_period_id'] !== null && !existsRow('period', $row['gestation_period_id'])) {
         $errors['gestation_period_id'] = 'That period does not exist.';
     }
+    if (!empty($in['published_in_form'])) {
+        $rows = [];
+        foreach ((array) ($in['published_in'] ?? []) as $r) {
+            $eid = optId($r, 'edition_id');
+            if (!$eid) {
+                continue;
+            }
+            if (!existsRow('edition', $eid)) {
+                $errors['published_in'] = 'One of the publications does not exist (any more).';
+                continue;
+            }
+            $rows[$eid] = ['edition_id' => $eid, 'locator' => optStr($r, 'locator', 100), 'first' => !empty($r['first'])];
+        }
+        if (count(array_filter($rows, fn($r) => $r['first'])) > 1) {
+            $errors['published_in'] = 'A work can be first published in only one publication.';
+        }
+        $row['_published_in'] = array_values($rows);
+    }
     return $row;
 }
 
@@ -725,6 +803,111 @@ function writePublication(?int $id, array $row): int
     }
     q('UPDATE publication SET ' . implode(' = ?, ', $cols) . ' = ? WHERE id = ?', [...$vals, $id]);
     return $id;
+}
+
+// ---- edition (a publication: book, collection, journal issue ... that contains works)
+
+function validateEdition(?int $id, array $in, array &$errors): array
+{
+    $row = [
+        'title'       => str($in, 'title', 300),
+        'kind'        => (string) ($in['kind'] ?? 'book'),
+        'publisher'   => optStr($in, 'publisher', 200),
+        'place'       => optStr($in, 'place', 100),
+        'isbn'        => optStr($in, 'isbn', 17),
+        'description' => optStr($in, 'description'),
+    ];
+    if ($row['title'] === '') {
+        $errors['title'] = 'Please enter a title.';
+    }
+    if (!isset(EDITION_KINDS[$row['kind']])) {
+        $errors['kind'] = 'Please choose the kind of publication.';
+    }
+    if ($row['isbn'] !== null && !preg_match('/^[0-9][0-9\- ]{8,15}[0-9Xx]$/', $row['isbn'])) {
+        $errors['isbn'] = 'This does not look like an ISBN (10 or 13 digits, dashes allowed).';
+    }
+    $release = smartDate($in, 'release', $errors, false, 'publication date');
+    $row['release_date'] = $release['date'] ?? null;
+    $row['release_precision'] = $release['precision'] ?? 'day';
+
+    $editors = [];
+    foreach ((array) ($in['editors'] ?? []) as $r) {
+        $pid = optId($r, 'person_id');
+        if (!$pid) {
+            continue;
+        }
+        if (!existsRow('person', $pid)) {
+            $errors['editors'] = 'One of the editors does not exist (any more).';
+            continue;
+        }
+        $editors[$pid] = $pid;
+    }
+    $row['_editors'] = array_values($editors);
+
+    $contents = [];
+    foreach ((array) ($in['contents'] ?? []) as $r) {
+        $wid = optId($r, 'work_id');
+        if (!$wid) {
+            continue;
+        }
+        if (!existsRow('publication', $wid)) {
+            $errors['contents'] = 'One of the works does not exist (any more).';
+            continue;
+        }
+        $contents[$wid] = ['work_id' => $wid, 'locator' => optStr($r, 'locator', 100), 'first' => !empty($r['first'])];
+    }
+    // A work is first published in one place only.
+    foreach ($contents as $c) {
+        if ($c['first'] && ($other = q1('SELECT e.title FROM edition_work x JOIN edition e ON e.id = x.edition_id
+                                          WHERE x.work_id = ? AND x.first_publication = 1 AND x.edition_id <> ?', [$c['work_id'], $id ?? 0]))) {
+            $errors['contents'] = '“' . entryLabel('publication', $c['work_id']) . '” is already marked as first published in “'
+                                . $other['title'] . '”. Untick it there first, or untick it here.';
+        }
+    }
+    $row['_contents'] = array_values($contents);
+    return $row;
+}
+
+function writeEdition(?int $id, array $row): int
+{
+    $cols = ['kind', 'title', 'publisher', 'place', 'release_date', 'release_precision', 'isbn', 'description'];
+    $vals = array_map(fn($c) => $row[$c], $cols);
+    if ($id === null) {
+        q('INSERT INTO edition (' . implode(', ', $cols) . ') VALUES (' . implode(', ', array_fill(0, count($cols), '?')) . ')', $vals);
+        return (int) getDb()->lastInsertId();
+    }
+    q('UPDATE edition SET ' . implode(' = ?, ', $cols) . ' = ? WHERE id = ?', [...$vals, $id]);
+    return $id;
+}
+
+/** Editors and contents of a publication, in the order of the form. */
+function saveEditionLists(int $id, array $editors, array $contents): void
+{
+    q('DELETE FROM edition_editor WHERE edition_id = ?', [$id]);
+    foreach ($editors as $i => $pid) {
+        q('INSERT INTO edition_editor (edition_id, person_id, sort_order) VALUES (?, ?, ?)', [$id, $pid, ($i + 1) * 10]);
+    }
+    q('DELETE FROM edition_work WHERE edition_id = ?', [$id]);
+    foreach ($contents as $i => $c) {
+        q('INSERT INTO edition_work (edition_id, work_id, locator, first_publication, sort_order) VALUES (?, ?, ?, ?, ?)',
+          [$id, $c['work_id'], $c['locator'], $c['first'] ? 1 : 0, ($i + 1) * 10]);
+    }
+}
+
+/** Where a work was published, from the work's form. Keeps the work's place in each publication's table of contents. */
+function saveWorkEditions(int $workId, array $rows): void
+{
+    $order = [];
+    foreach (q('SELECT edition_id, sort_order FROM edition_work WHERE work_id = ?', [$workId]) as $r) {
+        $order[(int) $r['edition_id']] = (int) $r['sort_order'];
+    }
+    q('DELETE FROM edition_work WHERE work_id = ?', [$workId]);
+    foreach ($rows as $r) {
+        $sort = $order[$r['edition_id']]
+            ?? (int) (q1('SELECT COALESCE(MAX(sort_order), 0) + 10 AS s FROM edition_work WHERE edition_id = ?', [$r['edition_id']])['s']);
+        q('INSERT INTO edition_work (edition_id, work_id, locator, first_publication, sort_order) VALUES (?, ?, ?, ?, ?)',
+          [$r['edition_id'], $workId, $r['locator'], $r['first'] ? 1 : 0, $sort]);
+    }
 }
 
 // ------------------------------------------------------------------ deleting
@@ -748,6 +931,9 @@ function deleteImpact(string $type, int $id): array
             }
             if ($e = q('SELECT name FROM event WHERE ? IN (person1_id, person2_id)', [$id])) {
                 $effects[] = 'The person is removed from these events: ' . $names($e) . '.';
+            }
+            if ($e = q('SELECT e.title FROM edition_editor x JOIN edition e ON e.id = x.edition_id WHERE x.person_id = ?', [$id])) {
+                $effects[] = 'The person is removed as editor of: ' . $names($e, 'title') . '.';
             }
             if ($n = count(relationRows($id))) {
                 $effects[] = "$n relation" . ($n === 1 ? '' : 's') . ' to other people will be deleted.';
@@ -776,6 +962,14 @@ function deleteImpact(string $type, int $id): array
             }
             if ($s = q('SELECT code AS name FROM source WHERE publication_id = ?', [$id])) {
                 $effects[] = 'These sources will no longer point to it: ' . $names($s) . '.';
+            }
+            if ($e = q('SELECT e.title FROM edition_work x JOIN edition e ON e.id = x.edition_id WHERE x.work_id = ?', [$id])) {
+                $effects[] = 'It is removed from the contents of these publications: ' . $names($e, 'title') . '.';
+            }
+            break;
+        case 'edition':
+            if ($w = q('SELECT w.title FROM edition_work x JOIN publication w ON w.id = x.work_id WHERE x.edition_id = ?', [$id])) {
+                $effects[] = 'These works will no longer list it under “Published in”: ' . $names($w, 'title') . '. The works themselves stay.';
             }
             break;
     }
@@ -832,7 +1026,10 @@ function deleteEntry(string $type, int $id): void
                 }
                 break;
             case 'publication':
-                q('DELETE FROM publication WHERE id = ?', [$id]);
+                q('DELETE FROM publication WHERE id = ?', [$id]);   // edition_work rows cascade
+                break;
+            case 'edition':
+                q('DELETE FROM edition WHERE id = ?', [$id]);       // editors, contents and keywords cascade
                 break;
         }
         logChange($type, $id, 'delete', $label, $snapshot);

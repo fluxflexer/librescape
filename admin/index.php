@@ -5,8 +5,9 @@ $me = requireLogin();
 
 $missing = entriesWithoutSource();
 $counts = q1('SELECT (SELECT COUNT(*) FROM event WHERE is_marker = 0) AS event, (SELECT COUNT(*) FROM period) AS period,
-                     (SELECT COUNT(*) FROM publication) AS publication, (SELECT COUNT(*) FROM person) AS person');
-$types = ['event' => 'Event', 'period' => 'Period', 'publication' => 'Work', 'person' => 'Person'];
+                     (SELECT COUNT(*) FROM publication) AS publication, (SELECT COUNT(*) FROM edition) AS edition,
+                     (SELECT COUNT(*) FROM person) AS person');
+$types = ['event' => 'Event', 'period' => 'Period', 'publication' => 'Work', 'edition' => 'Publication', 'person' => 'Person'];
 
 pageHeader('Dashboard', 'dashboard');
 ?>

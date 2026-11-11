@@ -18,6 +18,7 @@ function pageHeader(string $title, string $section = ''): void
         'event'       => ['list.php?type=event', 'Events'],
         'period'      => ['list.php?type=period', 'Periods'],
         'publication' => ['list.php?type=publication', 'Works'],
+        'edition'     => ['list.php?type=edition', 'Publications'],
         'person'      => ['list.php?type=person', 'People'],
     ];
     $adminNav = [
