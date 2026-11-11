@@ -5,7 +5,7 @@
     const DAY = 864e5;
     const YEAR = 365.25 * DAY;
     const ANIM = { duration: 700, easingFunction: 'easeInOutCubic' };
-    const TYPE_BY_PREFIX = { e: 'event', p: 'period', w: 'publication' };
+    const TYPE_BY_PREFIX = { e: 'event', p: 'period', w: 'publication', x: 'edition' };  // w = work, x = publication
 
     // Semantic zoom: a period that has sub-items in its own lane opens up into a band
     // (with its children inside) once it is at least this many pixels wide on screen.
@@ -84,7 +84,7 @@
     }
 
     function parseItemId(itemId) {
-        const m = /^([epw])(\d+)$/.exec(itemId || '');
+        const m = /^([epwx])(\d+)$/.exec(itemId || '');
         return m ? { type: TYPE_BY_PREFIX[m[1]], id: Number(m[2]) } : null;
     }
 
@@ -479,7 +479,7 @@
         }
         let logical = String(id);
         if (/^[ql]\d+(_\d+)?$/.test(logical)) logical = 'p' + logical.slice(1).replace(/_\d+$/, '');   // expanded band (or its continuation) -> its period
-        else if (/^k\d+_[epw]\d+$/.test(logical)) logical = logical.replace(/^k\d+_/, '');  // keyword-lane copy -> original
+        else if (/^k\d+_[epwx]\d+$/.test(logical)) logical = logical.replace(/^k\d+_/, '');  // keyword-lane copy -> original
         const ref = parseItemId(logical);
         if (!ref) return;
         selectedId = logical;
@@ -674,7 +674,7 @@
         const it = d.itemId && all.get(d.itemId);
         const g = it && groups.get(it.group);
         if (g) return g.className;
-        return d.type === 'publication' || d.type === 'edition' ? 'lane-pubs' : '';
+        return d.type === 'edition' ? 'lane-pubs' : d.type === 'publication' ? 'lane-works' : '';
     }
 
     function closePanel() {

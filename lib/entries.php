@@ -53,7 +53,7 @@ function editionsOfWork(int $workId): array
             $e['release_date'] ? formatDate($e['release_date'], $e['release_precision']) : null,
             $e['locator'],
         ]);
-        $out[] = ['label' => $e['title'], 'note' => implode(' · ', $note), 'type' => 'edition', 'id' => (int) $e['id'], 'itemId' => null];
+        $out[] = ['label' => $e['title'], 'note' => implode(' · ', $note), 'type' => 'edition', 'id' => (int) $e['id'], 'itemId' => editionItemId($e)];
     }
     return $out;
 }
@@ -113,9 +113,9 @@ function entryRef(string $type, int $id): ?array
             return $w ? ['label' => $w['title'], 'note' => $w['release_date'] ? formatDate($w['release_date'], $w['release_precision']) : 'work',
                          'type' => 'publication', 'id' => $id, 'itemId' => pubItemId($w)] : null;
         case 'edition':
-            $e = q1('SELECT title, release_date, release_precision FROM edition WHERE id = ?', [$id]);
+            $e = q1('SELECT id, title, release_date, release_precision FROM edition WHERE id = ?', [$id]);
             return $e ? ['label' => $e['title'], 'note' => $e['release_date'] ? formatDate($e['release_date'], $e['release_precision']) : 'publication',
-                         'type' => 'edition', 'id' => $id, 'itemId' => null] : null;
+                         'type' => 'edition', 'id' => $id, 'itemId' => editionItemId($e)] : null;
     }
     return null;
 }
@@ -151,7 +151,13 @@ function personRef(?int $pid, string $role): ?array
     return $p ? ['id' => (int) $p['id'], 'name' => personName($p), 'role' => $role] : null;
 }
 
-/** Timeline item id for a publication: its release point, else its gestation range. */
+/** Timeline item id of a publication (table edition): its point in the Publications lane, if it has a date. */
+function editionItemId(array $e): ?string
+{
+    return !empty($e['release_date']) ? 'x' . $e['id'] : null;
+}
+
+/** Timeline item id for a work (table publication): its release point, else its gestation range. */
 function pubItemId(array $pub): ?string
 {
     if (!empty($pub['release_date'])) {

@@ -3,7 +3,7 @@
 // Matches names/titles (best), keywords, then descriptions, across persons, events, periods, works and sources.
 
 declare(strict_types=1);
-require_once __DIR__ . '/../lib/db.php';
+require_once __DIR__ . '/../lib/entries.php';
 
 apiRun(function () {
     $term = trim((string) ($_GET['q'] ?? ''));
@@ -90,6 +90,27 @@ apiRun(function () {
             'date' => $w['release_date'] ? formatDate($w['release_date'], $w['release_precision']) : '',
             'sort' => $w['release_date'] ?? '9999',
             'itemId' => $itemId, 'score' => $w['by_name'] ? 2 : ($w['by_kw'] ? 1 : 0),
+        ];
+    }
+
+    // Publications (books, collections, journal issues that contain works)
+    foreach (q(
+        'SELECT x.id, x.title, x.kind, x.publisher, x.release_date, x.release_precision,
+                (x.title LIKE :q1) AS by_name,
+                EXISTS (SELECT 1 FROM edition_keyword xk JOIN keyword k ON k.id = xk.keyword_id
+                         WHERE xk.edition_id = x.id AND k.name LIKE :q2) AS by_kw
+           FROM edition x
+          WHERE x.title LIKE :q3 OR x.publisher LIKE :q4 OR (x.description LIKE :wa OR x.description LIKE :wb) OR x.isbn = :exact
+                OR EXISTS (SELECT 1 FROM edition_keyword xk JOIN keyword k ON k.id = xk.keyword_id
+                            WHERE xk.edition_id = x.id AND k.name LIKE :q5)',
+        ['q1' => $like, 'q2' => $like, 'q3' => $like, 'q4' => $like, 'wa' => $wordA, 'wb' => $wordB, 'q5' => $like, 'exact' => $term]
+    ) as $x) {
+        $results[] = [
+            'type' => 'edition', 'id' => (int) $x['id'], 'label' => $x['title'],
+            'sub' => 'Publication · ' . (EDITION_KINDS[$x['kind']] ?? $x['kind']) . ($x['publisher'] ? ' · ' . $x['publisher'] : ''),
+            'date' => $x['release_date'] ? formatDate($x['release_date'], $x['release_precision']) : '',
+            'sort' => $x['release_date'] ?? '9999',
+            'itemId' => editionItemId($x), 'score' => $x['by_name'] ? 2 : ($x['by_kw'] ? 1 : 0),
         ];
     }
 

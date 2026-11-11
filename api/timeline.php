@@ -1,6 +1,7 @@
 <?php
 // GET -> { meta, groups, items } in vis-timeline format.
-//   Item ids: e<id> = event, p<id> = period, w<id> = publication (work), bg<id> = background shading.
+//   Item ids: e<id> = event, p<id> = period, w<id> = work (table publication), x<id> = publication (table edition),
+//   bg<id> = background shading.
 //   `parent` (p<id> or null) links sub-events and sub-periods to the period they belong to.
 //   `kw` (optional) lists the item's keywords; meta.keywords = [{name, count}] for the keyword dropdown.
 
@@ -23,8 +24,10 @@ apiRun(function () {
     }
     $worldTrack = (int) (q1("SELECT id FROM track WHERE short_name = 'world'")['id'] ?? 0);
     $worksTrack = (int) (q1("SELECT id FROM track WHERE short_name = 'works'")['id'] ?? 0);
-    // Publication dates have their own lane; fall back to Works if it doesn't exist.
+    // Works (with their release dates) go to the Works lane; publications (books, collections, journal issues)
+    // to the Publications lane. Each falls back to the other lane if its own does not exist.
     $pubsTrack = (int) (q1("SELECT id FROM track WHERE short_name = 'pubs'")['id'] ?? 0) ?: $worksTrack;
+    $worksTrack = $worksTrack ?: $pubsTrack;
 
     $items = [];
 
@@ -86,17 +89,31 @@ apiRun(function () {
         }
     }
 
-    // Publications: a point at the release date.
-    $pubs = q('SELECT id, title, short_title, release_date, release_precision FROM publication WHERE release_date IS NOT NULL');
-    foreach ($pubs as $w) {
+    // Works: a point at the release date, in the Works lane.
+    $works = q('SELECT id, title, short_title, release_date, release_precision FROM publication WHERE release_date IS NOT NULL');
+    foreach ($works as $w) {
         $items[] = [
             'id'        => 'w' . $w['id'],
-            'group'     => $pubsTrack,
+            'group'     => $worksTrack,
             'type'      => 'point',
             'start'     => isoDate($w['release_date']),
             'content'   => htmlspecialchars($w['short_title'] ?: $w['title']),
             'title'     => htmlspecialchars($w['title'] . ' · published ' . formatDate($w['release_date'], $w['release_precision'])),
-            'className' => trim(($trackClass[$pubsTrack] ?? '') . ' item-pub prec-' . $w['release_precision']),
+            'className' => trim(($trackClass[$worksTrack] ?? '') . ' item-work prec-' . $w['release_precision']),
+        ];
+    }
+
+    // Publications (books, collections, journal issues that contain works): a point at their date.
+    $editions = q('SELECT id, title, release_date, release_precision FROM edition WHERE release_date IS NOT NULL');
+    foreach ($editions as $x) {
+        $items[] = [
+            'id'        => 'x' . $x['id'],
+            'group'     => $pubsTrack,
+            'type'      => 'point',
+            'start'     => isoDate($x['release_date']),
+            'content'   => htmlspecialchars($x['title']),
+            'title'     => htmlspecialchars($x['title'] . ' · published ' . formatDate($x['release_date'], $x['release_precision'])),
+            'className' => trim(($trackClass[$pubsTrack] ?? '') . ' item-pub prec-' . $x['release_precision']),
         ];
     }
 
@@ -106,6 +123,7 @@ apiRun(function () {
         'e' => 'SELECT ek.event_id AS id, k.name FROM event_keyword ek JOIN keyword k ON k.id = ek.keyword_id',
         'p' => 'SELECT pk.period_id AS id, k.name FROM period_keyword pk JOIN keyword k ON k.id = pk.keyword_id',
         'w' => 'SELECT wk.publication_id AS id, k.name FROM publication_keyword wk JOIN keyword k ON k.id = wk.keyword_id',
+        'x' => 'SELECT xk.edition_id AS id, k.name FROM edition_keyword xk JOIN keyword k ON k.id = xk.keyword_id',
     ] as $prefix => $sql) {
         foreach (q($sql) as $r) {
             $kwByItem[$prefix . $r['id']][] = $r['name'];

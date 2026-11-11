@@ -265,7 +265,7 @@ function editionDetails(int $id): ?array
     return [
         'type'        => 'edition',
         'id'          => (int) $e['id'],
-        'itemId'      => null,
+        'itemId'      => editionItemId($e),
         'title'       => $e['title'],
         'kind'        => 'Publication · ' . (EDITION_KINDS[$e['kind']] ?? $e['kind']),
         'date'        => $e['release_date'] ? 'Published ' . formatDate($e['release_date'], $e['release_precision']) : null,
@@ -320,7 +320,7 @@ function personDetails(int $id): ?array
     foreach (q('SELECT e.id, e.title, e.release_date, e.release_precision FROM edition_editor x JOIN edition e ON e.id = x.edition_id
                  WHERE x.person_id = ? ORDER BY e.release_date IS NULL, e.release_date', [$id]) as $e) {
         $related[] = ['label' => $e['title'], 'note' => trim('editor · ' . ($e['release_date'] ? formatDate($e['release_date'], $e['release_precision']) : ''), ' ·'),
-                      'type' => 'edition', 'id' => (int) $e['id'], 'itemId' => null];
+                      'type' => 'edition', 'id' => (int) $e['id'], 'itemId' => editionItemId($e)];
     }
 
     $born = $p['date_of_birth'] ? formatDate($p['date_of_birth'], $p['birth_precision'] ?? 'day') : '?';
