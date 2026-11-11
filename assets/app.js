@@ -10,13 +10,16 @@
     // Semantic zoom: a period that has sub-items in its own lane opens up into a band
     // (with its children inside) once it is at least this many pixels wide on screen.
     const EXPAND_PX = 420;
+    const ITEM_MARGIN_V = 8;   // vertical gap between stacked items (vis margin.item.vertical)
 
     // Inside every lane, periods (ranges) are stacked on top and events/works (points) below them.
-    // Done with vis subgroups: each lane gets a 'periods' and an 'events' block, ordered by `sgOrder`.
+    // Done with vis subgroups, ordered by `sgOrder`: 'periods' (0), then one row per opened period
+    // (1.xxx, see sync), then 'events' (2). An opened period's band only covers its own row, so
+    // unrelated items of the same lane are never drawn inside it.
     const LANE_GROUP_OPTS = { subgroupStack: true, subgroupOrder: 'sgOrder' };
     const lanePart = (type) => type === 'range'
         ? { subgroup: 'periods', sgOrder: 0 }
-        : { subgroup: 'events', sgOrder: 1 };
+        : { subgroup: 'events', sgOrder: 2 };
 
     const $ = (sel) => document.querySelector(sel);
     const els = {
@@ -147,24 +150,50 @@
             : matchAncestors.has(id) ? ' is-match-parent'
             : ' is-dimmed';
 
+        // Every opened period gets its own row in its lane, holding its label and its direct children.
+        // Rows are numbered depth-first (outer period, then its opened sub-periods, by start), so a
+        // nested band sits right below its parent's row. The row number is part of the subgroup id:
+        // when rows are inserted the id changes, which makes vis re-sort the rows.
+        const byStart = (a, b) => time(all.get(a).start) - time(all.get(b).start);
+        const bandRow = new Map();      // opened period id -> { subgroup, sgOrder }
+        const bandPieces = new Map();   // opened period id -> rows its band covers (own row + nested rows)
+        let rowNo = 0;
+        const visitBand = (pid, outer) => {
+            rowNo++;
+            const row = { subgroup: 'band' + rowNo + '-' + pid, sgOrder: 1 + rowNo / 1000 };
+            bandRow.set(pid, row);
+            bandPieces.set(pid, [pid]);
+            outer.forEach((o) => bandPieces.get(o).push(pid));   // enclosing bands continue through this row
+            (children.get(pid) || []).filter((c) => open.has(c)).sort(byStart).forEach((c) => visitBand(c, [...outer, pid]));
+        };
+        [...open].filter((id) => !sameLaneParent(id) && isVisible(id, open)).sort(byStart).forEach((id) => visitBand(id, []));
+        const rowFor = (it) => {
+            const p = sameLaneParent(it.id);
+            return p && bandRow.has(p) ? bandRow.get(p) : lanePart(it.type);
+        };
+
         const desired = [];
         all.forEach((it) => {
             if (it.type === 'background') { desired.push(it); return; }
             if (!isVisible(it.id, open)) return;
             if (open.has(it.id)) {
-                // Expanded parent: a band across its lane with the children inside, plus a label
-                // row on top (a real range item, so vis reserves space for it and it is clickable).
+                // Expanded parent: a band (limited to its own rows) with the children inside, plus a label
+                // on top (a real range item, so vis reserves space for it and it is clickable).
                 const state = (selectedId === it.id ? ' is-selected' : '') + searchClass(it.id);
                 const lane = it.baseClass.split(' ').filter((c) => c.startsWith('lane-')).join(' ');
-                desired.push({
-                    id: 'q' + it.id.slice(1),
+                const pieces = bandPieces.get(it.id);
+                pieces.forEach((rowPid, i) => desired.push({
+                    // q9 = the band in its own row; q9_12 = its continuation through nested band 12's row
+                    id: 'q' + it.id.slice(1) + (rowPid === it.id ? '' : '_' + rowPid.slice(1)),
                     type: 'background',
                     group: it.group,
                     start: it.start,
                     end: it.end,
                     content: '',
-                    className: (lane + ' band' + state).trim(),
-                }, {
+                    ...bandRow.get(rowPid),
+                    className: (lane + ' band' + (i > 0 ? ' band-cont' : '') + (i === pieces.length - 1 ? ' band-end' : '') + state).trim(),
+                }));
+                desired.push({
                     id: 'l' + it.id.slice(1),
                     type: 'range',
                     group: it.group,
@@ -173,13 +202,13 @@
                     content: it.content,
                     title: it.title,
                     isBandLabel: true,
-                    ...lanePart('range'),
+                    ...bandRow.get(it.id),
                     className: (lane + ' band-label' + state).trim(),
                 });
                 return;
             }
             const hidden = (children.get(it.id) || []).length;
-            desired.push(Object.assign({}, it, lanePart(it.type), {
+            desired.push(Object.assign({}, it, rowFor(it), {
                 className: (it.baseClass + (hidden ? ' has-children' : '') + searchClass(it.id)).trim(),
                 title: hidden ? it.title + ' · zoom in for ' + hidden + ' sub-item' + (hidden > 1 ? 's' : '') : it.title,
             }));
@@ -206,7 +235,8 @@
         if (remove.length) items.remove(remove);
         const changed = desired.filter((d) => {
             const cur = items.get(d.id);
-            return !cur || cur.className !== d.className || cur.type !== d.type || cur.title !== d.title || cur.content !== d.content;
+            return !cur || cur.className !== d.className || cur.type !== d.type || cur.title !== d.title || cur.content !== d.content
+                || cur.subgroup !== d.subgroup || cur.sgOrder !== d.sgOrder;
         });
         if (changed.length) items.update(changed);
 
@@ -216,6 +246,26 @@
             : [];
         const have = timeline.getSelection();
         if (want.join() !== have.join()) timeline.setSelection(want);
+    }
+
+    /**
+     * Stretch each band to the full height of its row. vis-timeline sizes background items from the
+     * subgroup's stored height, but it resets that height on every redraw and only recomputes it when it
+     * restacks, so a band would shrink to its label line. Runs after every redraw ('changed').
+     */
+    function fitBands() {
+        const set = timeline && timeline.itemSet;
+        if (!set || !set.items) return;
+        items.get({ filter: (it) => it.type === 'background' && it.subgroup && /\bband\b/.test(it.className || '') }).forEach((b) => {
+            const bi = set.items[b.id];
+            const sg = bi && bi.parent && bi.parent.subgroups && bi.parent.subgroups[b.subgroup];
+            if (!sg || !bi.dom || !bi.dom.box) return;
+            let bottom = 0;
+            sg.items.forEach((x) => {
+                if (x !== bi && x.displayed && x.data.type !== 'background') bottom = Math.max(bottom, x.top + x.height);
+            });
+            if (bottom > sg.top) bi.dom.box.style.height = (bottom - sg.top + ITEM_MARGIN_V / 2) + 'px';
+        });
     }
 
     let syncQueued = false;
@@ -365,7 +415,7 @@
             verticalScroll: true,
             showCurrentTime: false,
             selectable: true,
-            margin: { item: { horizontal: 6, vertical: 8 }, axis: 8 },
+            margin: { item: { horizontal: 6, vertical: ITEM_MARGIN_V }, axis: 8 },
             tooltip: { followMouse: true, overflowMethod: 'cap', delay: 150 },
             groupTemplate: (g) => g.keyword
                 ? el('div', { class: 'lane-label' },
@@ -379,6 +429,7 @@
         });
 
         timeline.on('click', onTimelineClick);
+        timeline.on('changed', fitBands);
         timeline.on('rangechange', scheduleSync);
         timeline.on('rangechanged', scheduleSync);
         window.addEventListener('resize', scheduleSync);
@@ -403,11 +454,21 @@
         let id = props.item;
         if (id && String(id).startsWith('bg')) id = null; // global shading is not clickable
 
-        // Expanded bands: vis may or may not report them as the clicked item, so also hit-test by lane + time.
+        // Expanded bands: vis may or may not report them as the clicked item, so also hit-test by lane, time
+        // and height: a band only covers its own rows, so a click on the events below it must not select it.
         if (!id && props.group != null && props.time && props.what !== 'axis') {
             const t = props.time.getTime();
+            const ev = props.event;
+            const y = ev && (ev.srcEvent ? ev.srcEvent.clientY : (ev.center ? ev.center.y : ev.clientY));
+            const insideRow = (bandId) => {
+                const box = timeline.itemSet && timeline.itemSet.items[bandId] && timeline.itemSet.items[bandId].dom
+                    && timeline.itemSet.items[bandId].dom.box;
+                if (!box || y == null) return true; // can't tell: fall back to lane + time
+                const r = box.getBoundingClientRect();
+                return y >= r.top && y <= r.bottom;
+            };
             const hits = items.get({ filter: (it) => it.type === 'background' && /\bband\b/.test(it.className || '') && it.group === props.group
-                                                 && time(it.start) <= t && t <= time(it.end) });
+                                                 && time(it.start) <= t && t <= time(it.end) && insideRow(it.id) });
             hits.sort((a, b) => (time(a.end) - time(a.start)) - (time(b.end) - time(b.start)));
             if (hits.length) id = hits[0].id; // innermost band
         }
@@ -417,7 +478,7 @@
             return;
         }
         let logical = String(id);
-        if (/^[ql]\d+$/.test(logical)) logical = 'p' + logical.slice(1);   // expanded band -> its period
+        if (/^[ql]\d+(_\d+)?$/.test(logical)) logical = 'p' + logical.slice(1).replace(/_\d+$/, '');   // expanded band (or its continuation) -> its period
         else if (/^k\d+_[epw]\d+$/.test(logical)) logical = logical.replace(/^k\d+_/, '');  // keyword-lane copy -> original
         const ref = parseItemId(logical);
         if (!ref) return;
