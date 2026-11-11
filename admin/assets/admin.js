@@ -132,15 +132,16 @@
             results = results.filter((r) => !taken.has(r.label));
         }
         const items = results.map((r) => ({ kind: 'pick', ...r }));
+        // "+ Create …" comes first, so it is always in view; the first match stays highlighted (see render).
         if (q !== '') {
             if (combo.dataset.create) {
-                items.push({ kind: 'create', label: '+ Create “' + q + '”…', text: q });
+                items.unshift({ kind: 'create', label: '+ Create “' + q + '”…', text: q });
             }
             if (isTagEntry(combo) && !results.some((r) => r.label.toLowerCase() === q.toLowerCase())) {
                 items.push({ kind: 'newtag', label: '+ New keyword “' + q.toLowerCase() + '”', text: q });
             }
         } else if (combo.dataset.create) {
-            items.push({ kind: 'create', label: '+ Create new…', text: '' });
+            items.unshift({ kind: 'create', label: '+ Create new…', text: '' });
         }
         render(combo, items);
     }
@@ -151,7 +152,9 @@
         const s = state(combo);
         const { input, list } = parts(combo);
         s.items = items;
-        s.active = items.length ? 0 : -1;
+        // Enter picks the best match, not "+ Create …" at the top (unless there is no match).
+        const firstMatch = items.findIndex((it) => it.kind !== 'create');
+        s.active = firstMatch >= 0 ? firstMatch : (items.length ? 0 : -1);
         list.replaceChildren(...items.map((it, i) => el('li', {
             role: 'option', id: 'cb' + comboId(combo) + '-' + i, class: 'combo-item ' + it.kind,
             'aria-selected': i === s.active ? 'true' : 'false', 'data-i': i,
@@ -453,12 +456,13 @@
         openQuickCreate(sel.dataset.newOption, '', (res) => {
             const opts = res.options || [{ value: String(res.id), label: res.label }];
             // Add the new choice(s) to every select of the same kind on the page (e.g. all relation rows and the row template).
+            // ("+ New …" is near the top of the list, so new choices are appended at the end.)
             document.querySelectorAll('select[data-new-option="' + sel.dataset.newOption + '"]').forEach((s) => {
-                for (const o of opts) s.querySelector('option[value="__new"]').before(el('option', { value: o.value, text: o.label }));
+                for (const o of opts) s.append(el('option', { value: o.value, text: o.label }));
             });
             document.querySelectorAll('template.row-template').forEach((tpl) => {
                 tpl.content.querySelectorAll('select[data-new-option="' + sel.dataset.newOption + '"]').forEach((s) => {
-                    for (const o of opts) s.querySelector('option[value="__new"]').before(el('option', { value: o.value, text: o.label }));
+                    for (const o of opts) s.append(el('option', { value: o.value, text: o.label }));
                 });
             });
             sel.value = opts[0].value;

@@ -255,11 +255,10 @@ pageHeader($title, $type);
             <?php
             $roleOptions = relationRoleOptions();
             echo rowsBlock('relations', 'Relations', $v['relations'] ?? [], function (string $i, array $r) use ($roleOptions, $id): string {
-                $opts = '<option value="">kind…</option>';
+                $opts = '<option value="">kind…</option><option value="__new">+ New kind of relation…</option>';
                 foreach ($roleOptions as $val => $label) {
                     $opts .= '<option value="' . h($val) . '"' . (($r['role'] ?? '') === $val ? ' selected' : '') . '>' . h($label) . '</option>';
                 }
-                $opts .= '<option value="__new">+ New kind of relation…</option>';
                 return '<div class="row relation-row"><span class="rel-self">is</span>'
                      . '<select name="relations[' . $i . '][role]" class="rel-role" aria-label="Kind of relation" data-new-option="relation_type">' . $opts . '</select>'
                      . comboWidget("relations[$i][other_id]", 'person', isset($r['other_id']) ? (int) $r['other_id'] : null, $r['other_label'] ?? null, 'person', $id, null, [], 'Person…')
@@ -342,8 +341,8 @@ pageHeader($title, $type);
                     <label for="f-category-id">Category</label>
                     <select id="f-category-id" name="category_id" data-new-option="pub_category"<?= errorAttrs($errors, 'category_id') ?>>
                         <option value="">(none)</option>
-                        <?php foreach ($cats as $cid => $cname): ?><option value="<?= (int) $cid ?>"<?= $intVal('category_id') === (int) $cid ? ' selected' : '' ?>><?= h($cname) ?></option><?php endforeach; ?>
                         <option value="__new">+ New category…</option>
+                        <?php foreach ($cats as $cid => $cname): ?><option value="<?= (int) $cid ?>"<?= $intVal('category_id') === (int) $cid ? ' selected' : '' ?>><?= h($cname) ?></option><?php endforeach; ?>
                     </select>
                     <?= errorText($errors, 'category_id') ?>
                 </div>
