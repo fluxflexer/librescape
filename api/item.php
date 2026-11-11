@@ -214,7 +214,7 @@ function publicationDetails(int $id): ?array
         'itemId'      => pubItemId($w),
         'title'       => $w['title'],
         'kind'        => 'Work' . ($w['category'] ? ' · ' . $w['category'] : ''),
-        'date'        => $w['release_date'] ? 'Published ' . formatDate($w['release_date'], $w['release_precision']) : 'Published in parts',
+        'date'        => $w['release_date'] ? 'Started ' . formatDate($w['release_date'], $w['release_precision']) : null,
         'description' => $w['description'],
         'keywords'    => keywordsFor('publication_keyword', 'publication_id', $id),
         'persons'     => $persons,

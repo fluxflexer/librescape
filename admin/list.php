@@ -60,7 +60,7 @@ $config = [
         'sort'  => ['label' => 'x.title', 'date' => 'x.release_date', 'track' => 'c.category', 'author' => 'a.surname'],
         'default' => 'date',
         'kw'    => ['publication_keyword', 'publication_id'],
-        'head'  => ['label' => 'Title', 'date' => 'Published', 'track' => 'Category', 'author' => 'Author'],
+        'head'  => ['label' => 'Title', 'date' => 'Started', 'track' => 'Category', 'author' => 'Author'],
     ],
     'edition' => [
         'title' => 'Publications', 'new' => 'New publication',

@@ -754,7 +754,7 @@ function validatePublication(?int $id, array $in, array &$errors): array
             $errors['shortcode'] = "The short code {$row['shortcode']} is already used by another work.";
         }
     }
-    $release = smartDate($in, 'release', $errors, false, 'release date');
+    $release = smartDate($in, 'release', $errors, false, 'start date');
     $row['release_date'] = $release['date'] ?? null;
     $row['release_precision'] = $release['precision'] ?? 'day';
     if ($row['category_id'] !== null && !existsRow('pub_category', $row['category_id'])) {

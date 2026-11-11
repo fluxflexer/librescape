@@ -336,7 +336,7 @@ pageHeader($title, $type);
                 <?= fieldText('shortcode', 'Short code', $val('shortcode'), $errors, ['maxlength' => 32, 'class' => 'upper'], 'Optional, unique, e.g. ROTK.') ?>
             </div>
             <div class="two">
-                <?= fieldDate('release', 'Published', $val('release'), $errors, false, 'Leave empty for unpublished works.') ?>
+                <?= fieldDate('release', 'Started', $val('release'), $errors, false, 'When work on it began. Optional.') ?>
                 <div class="field">
                     <?php $cats = array_column(q('SELECT id, category FROM pub_category ORDER BY category'), 'category', 'id'); ?>
                     <label for="f-category-id">Category</label>

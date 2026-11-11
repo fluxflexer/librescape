@@ -59,7 +59,7 @@ function quickCreateTemplates(): string
 
     $html .= qcDialog('publication', 'New work', 'publication', 'title',
         fieldText('title', 'Title', '', $none, ['required' => true])
-        . '<div class="two">' . fieldDate('release', 'Published', '') . '<div class="field"><label>Author</label>'
+        . '<div class="two">' . fieldDate('release', 'Started', '') . '<div class="field"><label>Author</label>'
         . comboWidget('author_id', 'person', null, null, null) . '</div></div>'
         . qcSourceField());
 

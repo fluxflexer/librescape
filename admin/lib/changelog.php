@@ -107,7 +107,7 @@ const FIELD_LABELS = [
     'track_id' => 'lane', 'parent_period_id' => 'part of period', 'gestation_period_id' => 'writing period',
     'person1_id' => 'person', 'person2_id' => 'second person', 'author_id' => 'author', 'author2_id' => 'second author',
     'author3_id' => 'third author', 'parent_work_id' => 'part of work', 'category_id' => 'category',
-    'start' => 'from', 'end' => 'to', 'birth' => 'born', 'death' => 'died', 'release' => 'published',
+    'start' => 'from', 'end' => 'to', 'birth' => 'born', 'death' => 'died', 'release' => 'date',
     'is_active' => 'active', 'source_type' => 'kind', 'published_date' => 'published', 'accessed_date' => 'accessed',
     'published_in' => 'published in', 'contents' => 'contains', 'isbn' => 'ISBN',
 ];

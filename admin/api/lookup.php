@@ -44,7 +44,7 @@ try {
 
         'publication' => array_map(fn($r) => [
                 'id' => (int) $r['id'], 'label' => $r['title'],
-                'sub' => trim(($r['release_date'] ? formatDate($r['release_date'], $r['release_precision']) : 'unpublished')
+                'sub' => trim(($r['release_date'] ? 'started ' . formatDate($r['release_date'], $r['release_precision']) : 'no date')
                        . ($r['category'] ? ' · ' . $r['category'] : '')),
             ], q("SELECT w.id, w.title, w.release_date, w.release_precision, c.category FROM publication w
                    LEFT JOIN pub_category c ON c.id = w.category_id

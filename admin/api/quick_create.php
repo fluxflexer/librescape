@@ -28,7 +28,7 @@ try {
                 'person'      => trim(($e['birth'] ?: '?') . ' – ' . $e['death'], ' –'),
                 'event'       => $e['date'],
                 'period'      => $e['start'] . ' – ' . $e['end'],
-                'publication' => $e['release'] ?: 'unpublished',
+                'publication' => $e['release'] ? 'started ' . $e['release'] : 'no date',
                 'edition'     => trim(($e['release'] ?: '') . ' · ' . EDITION_KINDS[$e['kind']], ' ·'),
             };
             break;

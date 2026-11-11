@@ -89,7 +89,7 @@ apiRun(function () {
         }
     }
 
-    // Works: a point at the release date, in the Works lane.
+    // Works: a point at the date they were started (column release_date), in the Works lane.
     $works = q('SELECT id, title, short_title, release_date, release_precision FROM publication WHERE release_date IS NOT NULL');
     foreach ($works as $w) {
         $items[] = [
@@ -98,7 +98,7 @@ apiRun(function () {
             'type'      => 'point',
             'start'     => isoDate($w['release_date']),
             'content'   => htmlspecialchars($w['short_title'] ?: $w['title']),
-            'title'     => htmlspecialchars($w['title'] . ' · published ' . formatDate($w['release_date'], $w['release_precision'])),
+            'title'     => htmlspecialchars($w['title'] . ' · started ' . formatDate($w['release_date'], $w['release_precision'])),
             'className' => trim(($trackClass[$worksTrack] ?? '') . ' item-work prec-' . $w['release_precision']),
         ];
     }
