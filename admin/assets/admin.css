@@ -378,6 +378,12 @@ kbd { font: 12px ui-monospace, Consolas, monospace; border: 1px solid var(--line
 .combo-item .ci-label { color: var(--ink); }
 .combo-item .ci-sub { color: var(--ink-3); font-size: 12.5px; }
 .combo-item.create .ci-label, .combo-item.newtag .ci-label { color: var(--accent); font-weight: 500; }
+/* Recently used entries (shown first when nothing is typed), separated from the rest by a line. */
+.combo-item.recent .ci-label::before { content: "↺ "; color: var(--ink-3); }
+.combo-item.recent + .combo-item:not(.recent) { margin-top: 5px; position: relative; }
+.combo-item.recent + .combo-item:not(.recent)::before {
+    content: ""; position: absolute; left: 6px; right: 6px; top: -3px; border-top: 1px solid var(--line);
+}
 .combo-empty { padding: 6px 9px; color: var(--ink-3); }
 
 /* ---------------------------------------------------------------- keyword chips */

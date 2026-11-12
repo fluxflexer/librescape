@@ -41,13 +41,13 @@ function quickCreateTemplates(): string
 
     $html .= qcDialog('event', 'New event', 'event', 'name',
         fieldText('name', 'Name', '', $none, ['required' => true])
-        . '<div class="two">' . fieldDate('date', 'Date', '', [], true) . fieldSelect('track_id', 'Lane', $tracks, $trackId('bio'), $none, '(none)') . '</div>'
+        . '<div class="two">' . fieldDate('date', 'Date', '', [], true) . fieldSelect('track_id', 'Lane', $tracks, $trackId('bio'), $none, '(none)', ['data-recent' => 'track']) . '</div>'
         . qcSourceField());
 
     $html .= qcDialog('period', 'New period', 'period', 'name',
         fieldText('name', 'Name', '', $none, ['required' => true])
         . '<div class="two">' . fieldDate('start', 'From', '', [], true) . fieldDate('end', 'To', '', [], true) . '</div>'
-        . fieldSelect('track_id', 'Lane', $tracks, $trackId('world'), $none, '(none)')
+        . fieldSelect('track_id', 'Lane', $tracks, $trackId('world'), $none, '(none)', ['data-recent' => 'track'])
         . qcSourceField());
 
     $html .= qcDialog('writing-period', 'New writing period', 'period', 'name',
@@ -65,7 +65,7 @@ function quickCreateTemplates(): string
 
     $html .= qcDialog('edition', 'New publication', 'edition', 'title',
         fieldText('title', 'Title', '', $none, ['required' => true])
-        . '<div class="two">' . fieldSelect('kind', 'Kind', EDITION_KINDS, 'book', $none) . fieldDate('release', 'Published', '') . '</div>'
+        . '<div class="two">' . fieldSelect('kind', 'Kind', EDITION_KINDS, 'book', $none, null, ['data-recent' => 'edition-kind']) . fieldDate('release', 'Published', '') . '</div>'
         . '<div class="two">' . fieldText('publisher', 'Publisher', '', $none) . fieldText('place', 'Place', '', $none) . '</div>'
         . qcSourceField(),
         'A book, collection or journal issue the work appeared in. Editors, ISBN and contents can be added in its own form.');

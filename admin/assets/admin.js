@@ -5,6 +5,7 @@
  *  .rows             repeating rows (links, sources, relations) with add / remove / move
  *  .smart-date       live preview of how a typed date is understood
  *  select[data-new-option]   "+ New …" option opens a quick-create dialog
+ *  recently used             last choices per kind come first in dropdowns and selects (select[data-recent])
  *  quick-create dialogs      <template id="qc-…"> → <dialog>, posted to api/quick_create.php
  *  form[data-dirty-guard]    warns before leaving with unsaved changes; Ctrl+S saves
  *
@@ -80,6 +81,55 @@
         return JSON.parse(JSON.stringify(out, (k, v) => (v && v.__list ? v.__list : v)));
     }
 
+    // ------------------------------------------------------------------ recently used choices
+    // Remembered per browser (localStorage), per kind: the last RECENT_MAX picks, most recent first.
+    // They are only a shortcut: if storage is blocked, the dropdowns simply work as before.
+
+    const RECENT_MAX = 3;
+
+    function recentGet(key) {
+        try {
+            const v = JSON.parse(localStorage.getItem('librescape.recent.' + key) || '[]');
+            return Array.isArray(v) ? v : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    /** Puts `entry` first in the list for `key`; `same` tells which stored entries are the same choice. */
+    function recentPush(key, entry, same) {
+        const list = [entry, ...recentGet(key).filter((x) => !same(x, entry))].slice(0, RECENT_MAX);
+        try { localStorage.setItem('librescape.recent.' + key, JSON.stringify(list)); } catch (e) { /* storage blocked */ }
+    }
+
+    /** Selects with data-recent: the recently used options move up, right after the empty and "+ New …" options. */
+    function orderRecentSelects(root) {
+        root.querySelectorAll('select[data-recent]').forEach((sel) => {
+            let anchor = null;
+            for (const o of sel.options) {
+                if (o.value === '' || o.value === '__new') anchor = o;
+                else break;
+            }
+            const values = recentGet('select.' + sel.dataset.recent).slice().reverse(); // oldest first, each goes to the top
+            for (const v of values) {
+                const opt = [...sel.options].find((o) => o.value === v);
+                if (!opt || opt === anchor) continue;
+                if (anchor) anchor.after(opt);
+                else sel.prepend(opt);
+            }
+        });
+    }
+
+    function rememberSelect(sel) {
+        if (!sel.dataset.recent || sel.value === '' || sel.value === '__new') return;
+        recentPush('select.' + sel.dataset.recent, sel.value, (a, b) => a === b);
+    }
+
+    document.addEventListener('change', (e) => {
+        const sel = e.target.closest('select[data-recent]');
+        if (sel) rememberSelect(sel);
+    });
+
     // ------------------------------------------------------------------ confirm buttons
 
     document.addEventListener('click', (e) => {
@@ -131,7 +181,14 @@
             const taken = new Set([...combo.closest('.tags').querySelectorAll('.chip input')].map((i) => i.value));
             results = results.filter((r) => !taken.has(r.label));
         }
-        const items = results.map((r) => ({ kind: 'pick', ...r }));
+        let items = results.map((r) => ({ kind: 'pick', ...r }));
+        // Without a search text, the recently picked entries of this kind come first (right under "+ Create new…").
+        if (q === '' && !isTagEntry(combo)) {
+            const recent = recentGet('combo.' + combo.dataset.type)
+                .filter((r) => String(r.id) !== String(combo.dataset.exclude || ''));
+            const ids = new Set(recent.map((r) => String(r.id)));
+            items = [...recent.map((r) => ({ kind: 'pick', recent: true, ...r })), ...items.filter((it) => !ids.has(String(it.id)))];
+        }
         // "+ Create …" comes first, so it is always in view; the first match stays highlighted (see render).
         if (q !== '') {
             if (combo.dataset.create) {
@@ -156,7 +213,8 @@
         const firstMatch = items.findIndex((it) => it.kind !== 'create');
         s.active = firstMatch >= 0 ? firstMatch : (items.length ? 0 : -1);
         list.replaceChildren(...items.map((it, i) => el('li', {
-            role: 'option', id: 'cb' + comboId(combo) + '-' + i, class: 'combo-item ' + it.kind,
+            role: 'option', id: 'cb' + comboId(combo) + '-' + i, class: 'combo-item ' + it.kind + (it.recent ? ' recent' : ''),
+            title: it.recent ? 'Recently used' : null,
             'aria-selected': i === s.active ? 'true' : 'false', 'data-i': i,
         }, el('span', { class: 'ci-label', text: it.label }), it.sub ? el('span', { class: 'ci-sub', text: it.sub }) : null)));
         if (!items.length) {
@@ -197,6 +255,7 @@
             return;
         }
         const { hidden, input, clear } = parts(combo);
+        recentPush('combo.' + combo.dataset.type, { id: item.id, label: item.label, sub: item.sub || '' }, (a, b) => String(a.id) === String(b.id));
         hidden.value = item.id;
         input.value = item.label;
         input.classList.remove('unresolved');
@@ -360,6 +419,7 @@
             holder.innerHTML = html;
             const row = holder.firstElementChild;
             block.querySelector(':scope > .rows').append(row);
+            orderRecentSelects(row);
             row.querySelector('input:not([type=hidden]), select')?.focus();
             markDirty(block);
             return;
@@ -467,6 +527,7 @@
             });
             sel.value = opts[0].value;
             sel.dataset.prev = sel.value;
+            rememberSelect(sel);
             markDirty(sel);
         }, sel);
     });
@@ -518,6 +579,7 @@
         });
         dialog.showModal();
         initDates(dialog);
+        orderRecentSelects(dialog);
         (form.querySelector('[aria-invalid=true], input[value=""]:not([type=hidden]):not([type=radio])') || form.querySelector('input:not([type=hidden]):not([type=radio])'))?.focus();
     }
 
@@ -631,6 +693,7 @@
     // ------------------------------------------------------------------ start
 
     initDates(document);
+    orderRecentSelects(document);
     // Jump to the first field with an error after a failed save.
     document.querySelector('.entry-form [aria-invalid=true]')?.focus();
 })();

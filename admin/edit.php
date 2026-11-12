@@ -270,7 +270,7 @@ pageHeader($title, $type);
                     $opts .= '<option value="' . h($val) . '"' . (($r['role'] ?? '') === $val ? ' selected' : '') . '>' . h($label) . '</option>';
                 }
                 return '<div class="row relation-row"><span class="rel-self">is</span>'
-                     . '<select name="relations[' . $i . '][role]" class="rel-role" aria-label="Kind of relation" data-new-option="relation_type">' . $opts . '</select>'
+                     . '<select name="relations[' . $i . '][role]" class="rel-role" aria-label="Kind of relation" data-new-option="relation_type" data-recent="relation_type">' . $opts . '</select>'
                      . comboWidget("relations[$i][other_id]", 'person', isset($r['other_id']) ? (int) $r['other_id'] : null, $r['other_label'] ?? null, 'person', $id, null, [], 'Person…')
                      . '<input type="text" name="relations[' . $i . '][status]" value="' . h($r['status'] ?? '') . '" placeholder="Details, e.g. married 1916" aria-label="Details" maxlength="50" class="rel-status">'
                      . rowButtons() . '</div>';
@@ -292,7 +292,7 @@ pageHeader($title, $type);
         <section class="card">
             <h2>Placement</h2>
             <div class="two">
-                <?= fieldSelect('track_id', 'Lane', $trackOptions, $intVal('track_id'), $errors, '(none)') ?>
+                <?= fieldSelect('track_id', 'Lane', $trackOptions, $intVal('track_id'), $errors, '(none)', ['data-recent' => 'track']) ?>
                 <?= fieldCombo('parent_period_id', 'Part of period', 'period', $intVal('parent_period_id'), comboLabel('period', $intVal('parent_period_id')), $errors, 'period', null,
                                'E.g. “D-Day” is part of “Second World War”.') ?>
             </div>
@@ -329,7 +329,7 @@ pageHeader($title, $type);
         <section class="card">
             <h2>Placement</h2>
             <div class="two">
-                <?= fieldSelect('track_id', 'Lane', $trackOptions, $intVal('track_id'), $errors, '(none)') ?>
+                <?= fieldSelect('track_id', 'Lane', $trackOptions, $intVal('track_id'), $errors, '(none)', ['data-recent' => 'track']) ?>
                 <?= fieldCombo('parent_period_id', 'Part of period', 'period', $intVal('parent_period_id'), comboLabel('period', $intVal('parent_period_id')), $errors, 'period', $id,
                                'E.g. “Battle of the Somme” is part of “First World War”.') ?>
             </div>
@@ -349,7 +349,7 @@ pageHeader($title, $type);
                 <div class="field">
                     <?php $cats = array_column(q('SELECT id, category FROM pub_category ORDER BY category'), 'category', 'id'); ?>
                     <label for="f-category-id">Category</label>
-                    <select id="f-category-id" name="category_id" data-new-option="pub_category"<?= errorAttrs($errors, 'category_id') ?>>
+                    <select id="f-category-id" name="category_id" data-new-option="pub_category" data-recent="pub_category"<?= errorAttrs($errors, 'category_id') ?>>
                         <option value="">(none)</option>
                         <option value="__new">+ New category…</option>
                         <?php foreach ($cats as $cid => $cname): ?><option value="<?= (int) $cid ?>"<?= $intVal('category_id') === (int) $cid ? ' selected' : '' ?>><?= h($cname) ?></option><?php endforeach; ?>
@@ -392,7 +392,7 @@ pageHeader($title, $type);
             <?= fieldText('title', 'Title', $val('title'), $errors, ['maxlength' => 300, 'required' => true, 'autofocus' => $isNew],
                           'As printed, e.g. “Essays Presented to Charles Williams” or “Proceedings of the British Academy, vol. 22”.') ?>
             <div class="two">
-                <?= fieldSelect('kind', 'Kind', EDITION_KINDS, $val('kind') ?: 'book', $errors) ?>
+                <?= fieldSelect('kind', 'Kind', EDITION_KINDS, $val('kind') ?: 'book', $errors, null, ['data-recent' => 'edition-kind']) ?>
                 <?= fieldDate('release', 'Published', $val('release'), $errors) ?>
             </div>
             <div class="two">
