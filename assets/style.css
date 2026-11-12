@@ -488,7 +488,7 @@ div.vis-tooltip {
     color: var(--lane, var(--accent));
 }
 .date { margin: 0 0 14px; color: var(--ink-2); font-family: var(--serif); font-style: italic; font-size: 15px; }
-.description { margin: 0 0 16px; line-height: 1.6; }
+.description { margin: 0 0 16px; line-height: 1.6; white-space: pre-line; } /* keeps the line breaks typed in the admin app */
 .panel-section { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
 
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
