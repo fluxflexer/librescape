@@ -222,6 +222,19 @@ button { font: inherit; color: inherit; }
 .stage { position: relative; flex: 1; min-height: 0; display: flex; overflow: hidden; } /* clips the panel while it slides in */
 .timeline { flex: 1; min-width: 0; height: 100%; }
 
+/* Closes the page off at the bottom, so its lower edge stays visible even when the window reaches past the screen. */
+.bottombar {
+    flex: 0 0 auto;
+    padding: 6px 20px;
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    color: var(--ink-3);
+    font-size: 12px;
+    text-align: center;
+    position: relative;
+    z-index: 20;
+}
+
 .status {
     position: absolute; inset: 0; display: grid; place-items: center;
     color: var(--ink-3); font-family: var(--serif); font-style: italic; font-size: 16px; pointer-events: none;

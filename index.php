@@ -80,6 +80,8 @@ $v = static fn(string $f): string => $f . '?v=' . (is_file(__DIR__ . '/' . $f) ?
     </aside>
 </main>
 
+<footer class="bottombar">Click an entry for its details · drag the timeline to move it · + and − zoom</footer>
+
 <script src="assets/vendor/vis-timeline/vis-timeline-graph2d.min.js"></script>
 <script src="<?= $v('assets/app.js') ?>"></script>
 </body>
