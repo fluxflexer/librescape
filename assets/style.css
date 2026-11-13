@@ -219,7 +219,7 @@ button { font: inherit; color: inherit; }
 
 /* ------------------------------------------------------------------ stage */
 
-.stage { position: relative; flex: 1; min-height: 0; display: flex; }
+.stage { position: relative; flex: 1; min-height: 0; display: flex; overflow: hidden; } /* clips the panel while it slides in */
 .timeline { flex: 1; min-width: 0; height: 100%; }
 
 .status {
@@ -440,6 +440,9 @@ div.vis-tooltip {
     transition: transform .3s cubic-bezier(.2, .8, .2, 1), opacity .25s ease;
 }
 .panel.is-open { transform: none; opacity: 1; }
+/* display:flex above would override the hidden attribute: the closed panel then waits off-screen on the right
+   and makes the whole page scroll sideways. */
+.panel[hidden] { display: none; }
 
 .panel-close {
     position: absolute; top: 10px; right: 10px;
